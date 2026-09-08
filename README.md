@@ -19,7 +19,7 @@ This is a pragmatic modular monolith. Next.js and Prisma keep the UI, API, and p
 
 ## Runtime
 
-- Node.js 20 (`20.x`, currently developed on 20.19+)
+- Node.js 24 (`24.x`)
 - pnpm
 
 Use the Node version in `.nvmrc`:
