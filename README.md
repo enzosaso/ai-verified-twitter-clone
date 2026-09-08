@@ -20,7 +20,7 @@ This is a pragmatic modular monolith. Next.js and Prisma keep the UI, API, and p
 ## Runtime
 
 - Node.js 20 (`20.x`, currently developed on 20.19+)
-- npm
+- pnpm
 
 Use the Node version in `.nvmrc`:
 
@@ -31,14 +31,14 @@ nvm use
 ## Getting started
 
 ```bash
-npm install
+pnpm install
 cp .env.example .env
 ```
 
 `.env` is gitignored. Set `DATABASE_URL` to a local PostgreSQL instance when database work begins. Prisma is configured, but no application schema has been created yet.
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 The app runs at [http://localhost:3000](http://localhost:3000).
@@ -47,15 +47,15 @@ The app runs at [http://localhost:3000](http://localhost:3000).
 
 | Command | Purpose |
 | --- | --- |
-| `npm run dev` | Start the development server |
-| `npm run build` | Production build |
-| `npm run lint` | Lint the project |
-| `npm run typecheck` | TypeScript check without emitting files |
-| `npm test` | Run unit/component tests |
-| `npm run test:watch` | Unit tests in watch mode |
-| `npm run test:coverage` | Unit tests with coverage |
-| `npm run test:e2e` | Playwright smoke tests (`npx playwright install chromium` on first run) |
-| `npm run db:generate` | Generate the Prisma client |
+| `pnpm dev` | Start the development server |
+| `pnpm build` | Production build |
+| `pnpm lint` | Lint the project |
+| `pnpm typecheck` | TypeScript check without emitting files |
+| `pnpm test` | Run unit/component tests |
+| `pnpm test:watch` | Unit tests in watch mode |
+| `pnpm test:coverage` | Unit tests with coverage |
+| `pnpm test:e2e` | Playwright smoke tests (`pnpm exec playwright install chromium` on first run) |
+| `pnpm db:generate` | Generate the Prisma client |
 
 ## Architecture
 
