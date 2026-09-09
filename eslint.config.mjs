@@ -13,6 +13,7 @@ const eslintConfig = defineConfig([
     "playwright-report/**",
     "test-results/**",
     "src/generated/**",
+    "prisma/migrations/**",
     "next-env.d.ts",
   ]),
 ]);

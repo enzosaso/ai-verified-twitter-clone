@@ -2,7 +2,7 @@
 
 A Twitter clone built for The Flock AI Verified technical challenge.
 
-The repository currently contains the application scaffold and development tooling only. Product features have not been implemented yet.
+The repository currently contains the application scaffold, development tooling, and the relational data model. Product features such as authentication, timelines, and tweet UI have not been implemented yet.
 
 ## Stack
 
@@ -35,13 +35,25 @@ pnpm install
 cp .env.example .env
 ```
 
-`.env` is gitignored. Set `DATABASE_URL` to a local PostgreSQL instance when database work begins. Prisma is configured, but no application schema has been created yet.
+`.env` is gitignored. Point `DATABASE_URL` at a local PostgreSQL database, then apply migrations and seed:
 
 ```bash
+pnpm db:migrate
+pnpm db:seed
 pnpm dev
 ```
 
-The app runs at [http://localhost:3000](http://localhost:3000).
+The app runs at [http://localhost:3000](http://localhost:3000). The home page is still a scaffold shell; the database is ready for later slices.
+
+### Demo account
+
+Seeded for later authentication work. Login is not implemented yet.
+
+- email: `demo@example.com`
+- username: `demo`
+- password: `Demo1234!`
+
+The password is stored as an Argon2id hash. Other seed users use the same development password so they can be used in later auth tests.
 
 ## Commands
 
@@ -56,14 +68,18 @@ The app runs at [http://localhost:3000](http://localhost:3000).
 | `pnpm test:coverage` | Unit tests with coverage |
 | `pnpm test:e2e` | Playwright smoke tests (`pnpm exec playwright install chromium` on first run) |
 | `pnpm db:generate` | Generate the Prisma client |
+| `pnpm db:migrate` | Create/apply Prisma migrations in development |
+| `pnpm db:migrate:deploy` | Apply existing migrations |
+| `pnpm db:seed` | Upsert the deterministic development seed |
+| `pnpm db:reset` | Drop the local database, migrate, and seed (**destructive**) |
 
 ## Architecture
 
 The app is a modular monolith. Shared UI lives in `src/components`, infrastructure in `src/lib`, and App Router entry points in `src/app`. Feature modules will be added under `src/modules` as slices land.
 
-Authentication will be custom. Firebase Auth and Supabase Auth will not be used.
+The database models `User`, `Session`, `Tweet`, `Follow`, and `Like`. Sessions and password hashes are in place for custom authentication; authentication behavior is not implemented yet. Firebase Auth and Supabase Auth will not be used.
 
-See [docs/architecture.md](docs/architecture.md) for boundaries and principles.
+See [docs/architecture.md](docs/architecture.md) for the data model, constraints, indexes, cascades, and seed strategy.
 
 ## AI-assisted development
 
