@@ -44,6 +44,42 @@ Feature modules live under `src/modules` (`auth`, `users`, `tweets`, `follows`, 
 
 See [docs/architecture.md](docs/architecture.md) for session design, the follow graph, timeline keyset pagination, likes, privacy boundaries, and trade-offs.
 
+## Quick start with Docker
+
+Docker is the **implemented challenge bonus** and the fastest way to run the project locally. Docker is the only prerequisite for this path: Node, pnpm, and PostgreSQL are not needed on the host.
+
+```bash
+docker compose up --build
+```
+
+That starts PostgreSQL, waits for it to report healthy, applies the committed migrations, runs the deterministic seed, and serves a production build of the app. Then open [http://localhost:3000](http://localhost:3000).
+
+Demo account:
+
+- Email: `demo@example.com`
+- Password: `Demo1234!`
+
+Stop the stack:
+
+```bash
+docker compose down
+```
+
+Full reset:
+
+```bash
+docker compose down -v
+```
+
+`-v` also deletes the local PostgreSQL Docker volume, so the next `docker compose up --build` migrates and seeds a brand-new database.
+
+Notes:
+
+- The database credentials in `docker-compose.yml` (`postgres` / `postgres` / `twitter_clone`) are local Docker development defaults, not secrets. Compose supplies the app's `DATABASE_URL`, so no `.env` is needed for this path.
+- PostgreSQL is published on `localhost:5432` so you can inspect it with `psql` if you want. If you already run PostgreSQL on that port, stop it first or change the published port in `docker-compose.yml`.
+- The seed is idempotent: restarting the stack does not multiply users, tweets, follows, or likes.
+- The manual setup below still works and is unchanged; use it if you prefer running against a host PostgreSQL.
+
 ## Prerequisites
 
 - **Git**
@@ -261,6 +297,8 @@ The auth E2E test registers a unique user, confirms the signed-in home page, log
 
 Implemented: auth, profiles, search, tweets, follows, lists, home timeline with cursor pagination, likes.
 
+Bonus implemented: **Docker / docker-compose one-command local setup** (see [Quick start with Docker](#quick-start-with-docker)).
+
 Not implemented:
 
 - replies
@@ -277,7 +315,7 @@ Other current limits:
 
 ## AI-assisted development
 
-This repository was built with the **Codex coding agent**, with **GitHub MCP** used where the workflow needed GitHub (creating the empty public repository). Cursor, Claude Code, Copilot, and similar tools were not part of this workflow.
+This repository was built with the **Codex coding agent** as the primary implementation and testing agent through the feature slices, with **GitHub MCP** used for repository operations where the workflow needed GitHub (creating the empty public repository). **Claude** was used later, for the final UI/presentation refinement and the responsive and accessibility review; it did not implement the backend or domain features. Architecture, scope, trade-offs, review criteria, and acceptance decisions remained human-directed throughout.
 
 Work was **feature-sliced**, not “build the whole challenge in one shot.” Each commit on `main` is one coherent slice (scaffold, pnpm, Node 24, schema/seed, auth, profiles/search, tweets, follows, timeline, likes). History was kept linear and unsquashed so evaluators can read the progression.
 
