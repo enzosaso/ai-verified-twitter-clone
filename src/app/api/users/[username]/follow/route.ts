@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import {
   isAllowedOrigin,
@@ -33,6 +34,7 @@ async function mutateFollow(
     } else {
       await unfollowUser(user.id, username);
     }
+    revalidatePath("/");
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     if (error instanceof AuthUnauthorizedError) {

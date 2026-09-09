@@ -24,39 +24,64 @@ export function HomeTimeline({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pendingRef = useRef(false);
+  const tweetsRef = useRef(initialTweets);
+
+  useEffect(() => {
+    tweetsRef.current = tweets;
+  }, [tweets]);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function refreshFirstPage() {
+    async function refreshFirstPage(): Promise<boolean> {
       try {
         const response = await fetch("/api/timeline", {
           credentials: "same-origin",
+          cache: "no-store",
         });
         const payload = (await response.json().catch(() => ({}))) as TimelinePayload;
-        if (cancelled || !response.ok || !Array.isArray(payload.tweets)) {
-          return;
+        if (cancelled) return false;
+        if (!response.ok || !Array.isArray(payload.tweets)) {
+          return false;
         }
-        setTweets(payload.tweets);
-        setNextCursor(payload.nextCursor ?? null);
+        const incoming = payload.tweets;
+        let applied = false;
+        setTweets((current) => {
+          if (current.length > 0 && incoming.length === 0) {
+            return current;
+          }
+          applied = true;
+          return incoming;
+        });
+        if (applied) {
+          setNextCursor(payload.nextCursor ?? null);
+        }
+        return true;
       } catch {
-        // Keep the server-rendered page if a background refresh fails.
+        return cancelled;
       }
     }
 
-    function onPageShow(event: PageTransitionEvent) {
-      if (event.persisted) {
-        void refreshFirstPage();
+    async function refreshWithRetry() {
+      const empty = tweetsRef.current.length === 0;
+      const ok = await refreshFirstPage();
+      if (cancelled || ok || !empty) return;
+      await refreshFirstPage();
+    }
+
+    function onPageShow() {
+      if (tweetsRef.current.length === 0) {
+        void refreshWithRetry();
       }
     }
 
-    void refreshFirstPage();
+    void refreshWithRetry();
     window.addEventListener("pageshow", onPageShow);
     return () => {
       cancelled = true;
       window.removeEventListener("pageshow", onPageShow);
     };
-  }, []);
+  }, [initialTweets.length]);
 
   async function loadMore() {
     if (pendingRef.current || !nextCursor) return;

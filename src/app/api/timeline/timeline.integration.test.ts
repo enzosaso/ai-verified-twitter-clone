@@ -1,7 +1,12 @@
 /** @vitest-environment node */
 import { randomUUID } from "node:crypto";
 import { NextRequest } from "next/server";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
+
+vi.mock("next/cache", () => ({
+  revalidatePath: vi.fn(),
+}));
+
 import { POST as register } from "@/app/api/auth/register/route";
 import { GET as timeline } from "@/app/api/timeline/route";
 import { POST as follow } from "@/app/api/users/[username]/follow/route";

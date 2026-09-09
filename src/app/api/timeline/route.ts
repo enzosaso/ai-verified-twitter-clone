@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 import { jsonError, readSessionToken } from "@/app/api/auth/http";
 import { requireAuthenticatedUserFromToken } from "@/modules/auth/application/require-user";
 import { AuthUnauthorizedError } from "@/modules/auth/domain/types";

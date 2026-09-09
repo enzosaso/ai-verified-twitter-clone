@@ -100,7 +100,10 @@ describe("HomeTimeline", () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         "/api/timeline",
-        expect.objectContaining({ credentials: "same-origin" }),
+        expect.objectContaining({
+          credentials: "same-origin",
+          cache: "no-store",
+        }),
       );
     });
 
@@ -206,6 +209,52 @@ describe("HomeTimeline", () => {
     await waitFor(() => {
       expect(screen.getByText("recovered page")).toBeInTheDocument();
     });
+  });
+
+  it("retries once when the first-page refresh fails on an empty timeline", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("aborted"))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          tweets: [tweet("followed-1", "followed note")],
+          nextCursor: null,
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <HomeTimeline
+        currentUserId="viewer"
+        initialTweets={[]}
+        initialCursor={null}
+      />,
+    );
+
+    expect(
+      await screen.findByText("followed note"),
+    ).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not replace a non-empty timeline with an empty refresh result", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({ tweets: [], nextCursor: null }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <HomeTimeline
+        currentUserId="viewer"
+        initialTweets={[tweet("1", "first page")]}
+        initialCursor={null}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+    expect(screen.getByText("first page")).toBeInTheDocument();
   });
 
   it("shows a recoverable error when the request fails to reach the server", async () => {

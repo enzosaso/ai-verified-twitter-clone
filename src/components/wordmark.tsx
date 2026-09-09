@@ -4,6 +4,7 @@ export function Wordmark({ href = "/" }: { href?: string }) {
   return (
     <Link
       href={href}
+      prefetch={href === "/" ? false : undefined}
       className="inline-flex items-center gap-2.5 text-ink no-underline"
     >
       <span
