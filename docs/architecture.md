@@ -11,9 +11,10 @@ This project is a pragmatic modular monolith: one Next.js application, one Postg
 - `src/modules/users` — public profiles and people search
 - `src/modules/tweets` — tweet create, delete, and profile lists
 - `src/modules/follows` — follow/unfollow, counts, and follower/following lists
+- `src/modules/timeline` — authenticated home feed with cursor pagination
 - `prisma` — schema, migrations, and development seed
 
-Likes and the followed-user home timeline are not present yet.
+Likes, replies, images, notifications, and realtime updates are not present yet.
 
 ## Principles
 
@@ -23,7 +24,7 @@ Likes and the followed-user home timeline are not present yet.
 
 ## Authentication
 
-Custom cookie sessions are implemented. Likes and the followed-user timeline are not.
+Custom cookie sessions are implemented. Likes are not.
 
 ### HTTP surface
 
@@ -37,8 +38,9 @@ Custom cookie sessions are implemented. Likes and the followed-user timeline are
 | `DELETE` | `/api/tweets/[id]` | Delete own tweet (`204`); `403` if another user owns it |
 | `POST` | `/api/users/[username]/follow` | Follow that user as the session user (`204`, idempotent) |
 | `DELETE` | `/api/users/[username]/follow` | Unfollow that user (`204`, idempotent) |
+| `GET` | `/api/timeline` | Authenticated home timeline page (`200`); `cursor` and `limit` query params |
 
-Pages: `/` (guest or signed-in home with composer), `/login`, `/register`, `/search`, `/users/[username]`, `/users/[username]/followers`, `/users/[username]/following`.
+Pages: `/` (guest landing or signed-in home timeline), `/login`, `/register`, `/search`, `/users/[username]`, `/users/[username]/followers`, `/users/[username]/following`.
 
 ## Public profiles and search
 
@@ -100,7 +102,49 @@ Public tweet JSON:
 
 No email, password hash, or session fields. Dates on the page use a UTC `YYYY-MM-DD HH:mm UTC` string from the ISO timestamp to avoid hydration mismatches.
 
-The signed-in home composer posts to the API and refreshes. Home shows **your** posts, not a followed-user timeline.
+The signed-in home composer posts to the API and refreshes. Home is the social timeline described below.
+
+## Home timeline
+
+`GET /api/timeline` is a read. It requires a session (`401` without one). There is no CSRF origin check because it does not mutate.
+
+The feed is the tweets the viewer should see as “home”:
+
+- authored by the viewer, or
+- authored by a user the viewer follows (`Tweet.author.followers` some `followerId = viewerId`)
+
+Unfollowed and unrelated authors are excluded. Prisma evaluates the follow filter as a relation `some` predicate (an `EXISTS` / semi-join), so the application does not load the follow list into memory and then query tweets per author. Author fields are selected in the same `findMany` (`TWEET_AUTHOR_SELECT`). There is no `COUNT(*)` for pagination.
+
+### Ordering
+
+`createdAt DESC`, then `id DESC`. The id tie-break makes equal timestamps deterministic.
+
+### Cursor
+
+The cursor is opaque **base64url JSON**: `{ "createdAt": "<ISO>", "id": "<uuid>" }`.
+
+Page N+1 is a keyset, not `OFFSET`:
+
+```
+createdAt < cursor.createdAt
+OR (createdAt = cursor.createdAt AND id < cursor.id)
+```
+
+A tweet inserted after page 1 was fetched, and newer than that page, does not appear on page 2 and does not skip the older rows the cursor already pointed past. Malformed cursors are `400`, not `500`. Empty/`null` cursor means the first page.
+
+`take: limit + 1` decides whether another page exists. If there is a leftover row, `nextCursor` is encoded from the last returned tweet. Otherwise `nextCursor` is `null`.
+
+### Page size
+
+Default **20**. Maximum **50** (larger values are capped). Non-integer, zero, or negative limits are `400`.
+
+### UI
+
+Signed-in `/` server-renders page 1 (composer + timeline). The timeline client also refetches `GET /api/timeline` on mount (and on `pageshow` after back/forward cache) so a follow/unfollow is visible on the next home visit without depending on a stale client router cache. **Load more** appends `?cursor=`. Posting still `router.refresh()`es; the first page remounts so the new tweet is on top. No websocket or live splice.
+
+### Trade-offs
+
+Keyset pagination is stable for this sort key and cheap at challenge scale. The existing `tweets` indexes (`authorId, createdAt DESC` and `createdAt DESC`) are enough; no extra migration. Deep “jump to page 40” is not supported. The cursor is not a secret, only an opaque position.
 
 ## Follow graph
 
@@ -119,7 +163,7 @@ Rules:
 
 Public profile JSON and HTML still omit email, `passwordHash`, and session fields. Social data on a profile is counts plus whether the current viewer follows that profile.
 
-Known limitation: following someone does not change the home feed. There is no followed-user timeline, like, reply, image, or notification surface yet.
+Following someone includes their tweets on the next home load. Unfollowing drops them. There is still no like, reply, image, notification, or realtime surface.
 
 ### Normalization and validation
 
@@ -177,7 +221,7 @@ IDs are UUID v4 stored as PostgreSQL `uuid`.
 
 - Unit tests cover validation, token hashing, cookie options, and safe-user mapping.
 - Integration tests hit the route handlers against PostgreSQL.
-- Playwright covers register → authenticated home → logout → login, plus search, tweets, and a follow/unfollow flow with isolated users.
+- Playwright covers register → authenticated home → logout → login, plus search, tweets, follow/unfollow, and a home timeline follow flow.
 
 Database tests use `TEST_DATABASE_URL` if set, otherwise `DATABASE_URL`. Both must look local/test (`localhost`, `127.0.0.1`, `twitter_clone`, or `_test`). Tests create isolated rows and delete them; they do not run `db:reset`.
 

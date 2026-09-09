@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
+import { HomeTimeline } from "@/components/home-timeline";
 import { SearchForm } from "@/components/search-form";
 import { TweetComposer } from "@/components/tweet-composer";
-import { TweetList } from "@/components/tweet-list";
 import { Wordmark } from "@/components/wordmark";
 import { getCurrentUser } from "@/modules/auth/application/require-user";
-import { getTweetsByAuthorId } from "@/modules/tweets/application/tweets";
+import { getHomeTimeline } from "@/modules/timeline/application/timeline";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function Home() {
   const user = await getCurrentUser();
@@ -21,7 +24,7 @@ export default async function Home() {
     );
   }
 
-  const tweets = await getTweetsByAuthorId(user.id);
+  const page = await getHomeTimeline(user.id);
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-5 py-8">
@@ -36,16 +39,12 @@ export default async function Home() {
           </h1>
         </div>
         <TweetComposer />
-        <section aria-label="Your posts">
-          <h2 className="mb-1 text-sm font-medium uppercase tracking-[0.18em] text-accent">
-            Your posts
-          </h2>
-          <TweetList
-            tweets={tweets}
-            currentUserId={user.id}
-            emptyMessage="You haven’t posted yet."
-          />
-        </section>
+        <HomeTimeline
+          key={page.tweets[0]?.id ?? "empty"}
+          currentUserId={user.id}
+          initialTweets={page.tweets}
+          initialCursor={page.nextCursor}
+        />
         <SearchForm />
         <p className="text-sm text-muted">
           Signed in as @{user.username}.{" "}
@@ -65,8 +64,8 @@ function GuestHome() {
         Short notes. A small flock.
       </h1>
       <p className="max-w-md text-muted">
-        Sign in to post notes, search people, and follow accounts. A
-        followed-user home timeline comes later.
+        Sign in to post notes, search people, and follow accounts. Home shows
+        notes from you and the people you follow.
       </p>
       <div className="flex flex-col gap-3 sm:flex-row">
         <Link

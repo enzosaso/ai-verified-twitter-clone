@@ -96,7 +96,7 @@ const SEED_USERS = [
   },
 ] as const;
 
-const SEED_USER_IDS = SEED_USERS.map((user) => user.id);
+export const SEED_USER_IDS = SEED_USERS.map((user) => user.id);
 
 const TWEET_COPY: Record<(typeof SEED_USERS)[number]["username"], string[]> = {
   demo: [

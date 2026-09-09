@@ -3,7 +3,7 @@ import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
-import { seed, DEMO_EMAIL, DEMO_USERNAME } from "../../prisma/seed";
+import { seed, DEMO_EMAIL, DEMO_USERNAME, SEED_USER_IDS } from "../../prisma/seed";
 import { hashPassword } from "@/lib/password";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -145,11 +145,12 @@ describe.skipIf(!hasDatabaseUrl)("database invariants", () => {
   it("seeds at least 10 users plus tweets, follows, and likes", async () => {
     await seed();
 
+    const seedIds = [...SEED_USER_IDS];
     const [users, tweets, follows, likes, demo] = await Promise.all([
-      prisma.user.count(),
-      prisma.tweet.count(),
-      prisma.follow.count(),
-      prisma.like.count(),
+      prisma.user.count({ where: { id: { in: seedIds } } }),
+      prisma.tweet.count({ where: { authorId: { in: seedIds } } }),
+      prisma.follow.count({ where: { followerId: { in: seedIds } } }),
+      prisma.like.count({ where: { userId: { in: seedIds } } }),
       prisma.user.findUnique({
         where: { email: DEMO_EMAIL },
         select: { username: true, passwordHash: true },

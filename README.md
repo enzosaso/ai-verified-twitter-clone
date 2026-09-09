@@ -2,7 +2,7 @@
 
 A Twitter clone built for The Flock AI Verified technical challenge.
 
-The repository currently includes the application scaffold, the relational data model, custom authentication, public profiles, people search, tweet create/delete, and the follow graph (follow/unfollow, counts, and follower/following lists). Likes and the followed-user home timeline are not implemented yet.
+The repository currently includes the application scaffold, the relational data model, custom authentication, public profiles, people search, tweet create/delete, the follow graph, and an authenticated home timeline with cursor pagination. Likes, replies, images, notifications, and realtime updates are not implemented yet.
 
 ## Stack
 
@@ -81,7 +81,18 @@ Follower list: `/users/[username]/followers`. Following list: `/users/[username]
 - Create: `POST /api/tweets` with `{ "content": "..." }` (authenticated). Author comes from the session.
 - Delete: `DELETE /api/tweets/[id]` — owner only (`403` otherwise, `404` if missing).
 - Content is trimmed, required, max 280 characters. Internal newlines are kept.
-- Public profiles list that user's posts newest first. Signed-in home has a composer and your own posts. This is not a follow timeline.
+- Public profiles list that user's posts newest first.
+
+## Home timeline
+
+Signed-in `/` is a social home feed, not “only your posts.”
+
+- Includes the viewer’s tweets and tweets from accounts they follow.
+- Excludes everyone else. Deleted tweets disappear because they are gone from `tweets`.
+- Order: `createdAt DESC`, then `id DESC` so equal timestamps stay stable.
+- Pagination is a keyset cursor on that `(createdAt, id)` pair, not `OFFSET`. Default page size is 20, maximum 50.
+- `GET /api/timeline?cursor=&limit=` (authenticated). `nextCursor` is opaque base64url JSON; a malformed cursor is `400`. The last page returns `nextCursor: null`.
+- Home server-renders the first page. **Load more** appends the next page. Posting refreshes the first page; there is no live insert or websocket.
 
 ## Follows
 
@@ -112,7 +123,7 @@ pnpm exec playwright install chromium
 pnpm test:e2e
 ```
 
-The auth E2E test registers a unique user, confirms the signed-in home page, logs out, logs back in, and checks the session again. The search E2E test registers a user, finds them by query, opens the public profile, and checks that email is not shown. The tweet E2E test registers, posts a note, sees it on home and profile, then deletes it. The follow E2E test registers two isolated users, follows from a profile, checks counts and the followers list, then unfollows.
+The auth E2E test registers a unique user, confirms the signed-in home page, logs out, logs back in, and checks the session again. The search E2E test registers a user, finds them by query, opens the public profile, and checks that email is not shown. The tweet E2E test registers, posts a note, sees it on home and profile, then deletes it. The follow E2E test registers two isolated users, follows from a profile, checks counts and the followers list, then unfollows. The timeline E2E test registers two users, follows, and checks that followed and own tweets appear on home in newest-first order.
 
 ## Commands
 
@@ -134,7 +145,7 @@ The auth E2E test registers a unique user, confirms the signed-in home page, log
 
 ## Architecture
 
-Feature code lives under `src/modules`. Auth is in `src/modules/auth`. Public profiles and search are in `src/modules/users`. Tweets are in `src/modules/tweets`. Follows are in `src/modules/follows`. HTTP route handlers are in `src/app/api`.
+Feature code lives under `src/modules`. Auth is in `src/modules/auth`. Public profiles and search are in `src/modules/users`. Tweets are in `src/modules/tweets`. Follows are in `src/modules/follows`. The home timeline is in `src/modules/timeline`. HTTP route handlers are in `src/app/api`.
 
 See [docs/architecture.md](docs/architecture.md) for the data model, session design, and testing notes.
 
