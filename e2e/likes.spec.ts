@@ -46,8 +46,13 @@ test("like a followed tweet on home and unlike it on the profile", async ({
   await page.goto(`/users/${userB.username}`);
   await page.getByRole("button", { name: "Follow" }).click();
   await expect(page.getByRole("button", { name: "Unfollow" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "1 follower" })).toBeVisible();
 
   await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: `Welcome back, ${userA.displayName}.` }),
+  ).toBeVisible();
+  await expect(page.getByText(userB.tweet)).toBeVisible();
   const homeCard = page.locator("article").filter({ hasText: userB.tweet });
   await expect(homeCard.getByText("0 likes")).toBeVisible();
   await homeCard.getByRole("button", { name: "Like" }).click();
