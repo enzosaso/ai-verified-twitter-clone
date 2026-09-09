@@ -253,9 +253,9 @@ IDs are UUID v4 stored as PostgreSQL `uuid`.
 
 ## Testing
 
-- Unit tests cover validation, token hashing, cookie options, and safe-user mapping.
-- Integration tests hit the route handlers against PostgreSQL.
-- Playwright covers register → authenticated home → logout → login, plus search, tweets, follow/unfollow, home timeline, and like/unlike.
+- Unit tests cover validation, token hashing, cookie options, public mapping, cursors, and like/follow error classification.
+- Integration tests hit the route handlers against PostgreSQL (auth, tweets, follow, likes, timeline, search).
+- Playwright covers register → authenticated home → logout → login, plus search, tweets, follow/unfollow, home timeline, and like/unlike. `playwright.config.ts` starts `pnpm dev` unless a server is already running (non-CI). E2E needs a local database because the tests register users and mutate data.
 
 Database tests use `TEST_DATABASE_URL` if set, otherwise `DATABASE_URL`. Both must look local/test (`localhost`, `127.0.0.1`, `twitter_clone`, or `_test`). Tests create isolated rows and delete them; they do not run `db:reset`.
 
@@ -265,8 +265,13 @@ pnpm test:coverage
 pnpm test:e2e
 ```
 
-## Trade-offs
+## Trade-offs and limitations
 
-- Expired session rows can linger until they are seen again.
+- Expired session rows can linger until they are seen again. There is no background cleanup job.
 - `SameSite=Lax` plus Origin checking is the CSRF baseline; no synchronizer tokens.
 - `pnpm db:reset` is a local wipe. Do not run it against a shared database.
+- Follower and following lists return at most 50 rows (newest relationship first).
+- Profile tweet lists return at most 30 posts (newest first).
+- The home timeline is keyset-paginated (default 20, max 50); there is no “jump to page N.”
+- Avatars are initials placeholders. There is no upload, and seed `avatarUrl` paths are not rendered as files.
+- Replies, image uploads, notifications, and realtime updates are not implemented.

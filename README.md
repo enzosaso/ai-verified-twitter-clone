@@ -2,7 +2,7 @@
 
 A Twitter clone built for The Flock AI Verified technical challenge.
 
-The repository currently includes the application scaffold, the relational data model, custom authentication, public profiles, people search, tweet create/delete, the follow graph, an authenticated home timeline with cursor pagination, and tweet likes. Replies, images, notifications, and realtime updates are not implemented yet.
+The app includes custom authentication, public profiles, people search, tweet create/delete, follow/unfollow with follower and following lists, an authenticated home timeline with cursor pagination, and tweet likes. Replies, image uploads, notifications, and realtime updates are not implemented.
 
 ## Stack
 
@@ -12,46 +12,123 @@ The repository currently includes the application scaffold, the relational data 
 - **Prisma** — schema, migrations, and typed database access
 - **Tailwind CSS** — utility-first styling
 - **Vitest** — unit and backend integration tests
-- **Playwright** — end-to-end tests, including authentication
+- **Playwright** — end-to-end tests
 - **ESLint** — linting
 
-This is a pragmatic modular monolith. Next.js and Prisma keep the UI, API, and persistence in one codebase so features can ship without extra services or ceremony.
+This is a pragmatic modular monolith. Next.js and Prisma keep the UI, API, and persistence in one codebase so features can ship without extra services or ceremony. Authentication is custom application code, not Firebase Auth or Supabase Auth.
 
-## Runtime
+Feature modules live under `src/modules` (`auth`, `users`, `tweets`, `follows`, `timeline`, `likes`). HTTP handlers are in `src/app/api`.
 
-- Node.js 24 (`24.x`)
-- pnpm
+See [docs/architecture.md](docs/architecture.md) for session design, the follow graph, timeline keyset pagination, likes, privacy boundaries, and trade-offs.
 
-Use the Node version in `.nvmrc`:
+## Prerequisites
+
+- **Git**
+- **Node.js 24** (`24.x`). The repo pins this in `.nvmrc` and `package.json` `engines.node` (`>=24 <25`).
+- **pnpm 10.34.5**, via Corepack (the repo sets `"packageManager": "pnpm@10.34.5"`). Do not assume a global pnpm install.
+- **PostgreSQL**, installed and **running** before migrations. Prisma does not create the database.
+- **Playwright Chromium** for E2E tests (`pnpm exec playwright install chromium` on first run).
+
+## Fresh clone
 
 ```bash
+git clone https://github.com/enzosaso/ai-verified-twitter-clone.git
+cd ai-verified-twitter-clone
 nvm use
+corepack enable
+corepack prepare pnpm@10.34.5 --activate
 ```
 
-## Getting started
+`nvm use` reads `.nvmrc` (`24`). Then enable Corepack and activate the pinned pnpm:
 
 ```bash
-pnpm install
+pnpm --version
+```
+
+That should print `10.34.5`.
+
+### PostgreSQL
+
+Create an empty database **before** applying migrations. Prisma applies tables to an existing database; it does not create `twitter_clone` for you.
+
+Example:
+
+```bash
+createdb twitter_clone
+```
+
+Equivalent SQL:
+
+```sql
+CREATE DATABASE twitter_clone;
+```
+
+Copy the example env file and point it at your instance:
+
+```bash
 cp .env.example .env
 ```
 
-`.env` is gitignored. Point `DATABASE_URL` at a local PostgreSQL database, then apply migrations and seed:
+`.env` is gitignored. Required:
+
+- `DATABASE_URL` — PostgreSQL connection string for the app, migrations, and seed.
+
+Optional:
+
+- `TEST_DATABASE_URL` — if set, Vitest integration tests use this instead of `DATABASE_URL`.
+
+`.env.example` uses `postgresql://postgres:postgres@localhost:5432/twitter_clone` as a **placeholder**. Many local installs use a different role, no password, another host, or another port. Edit username, password, host, and port to match your PostgreSQL. Do not assume `postgres` / `postgres`.
+
+Integration tests refuse URLs that do not look local/test (`localhost`, `127.0.0.1`, `twitter_clone`, or `_test`). They insert isolated rows and delete them. They never run `db:reset`.
+
+### Install, migrate, seed
 
 ```bash
-pnpm db:migrate
+pnpm install
+pnpm db:migrate:deploy
 pnpm db:seed
+```
+
+`pnpm install` also runs `postinstall` → `prisma generate`.
+
+On a fresh clone, **`pnpm db:migrate:deploy`** is the evaluator path: it applies the committed migration in `prisma/migrations`. It does not create new migrations.
+
+| Command | What it does |
+| --- | --- |
+| `pnpm db:migrate:deploy` | Apply existing migrations (`prisma migrate deploy`). Use this on a fresh clone. |
+| `pnpm db:migrate` | `prisma migrate dev` — development only; can create new migrations. |
+| `pnpm db:seed` | Upsert the deterministic development seed. |
+| `pnpm db:reset` | Drop the database, migrate, and seed. **Destructive. Local development only. Do not run against a shared database.** |
+| `pnpm db:generate` | Regenerate the Prisma client (also runs on `pnpm install`). |
+
+### Run the app
+
+```bash
 pnpm dev
 ```
 
-The app runs at [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000).
 
-### Demo account
+### Demo credentials (development only)
 
 - email: `demo@example.com`
 - username: `demo`
 - password: `Demo1234!`
 
-The password is stored as an Argon2id hash. Other seed users use the same development password.
+These are seeded development credentials, not production secrets. Other seed users use the same development password. The password is stored as an Argon2id hash.
+
+### Checklist
+
+1. Clone the repository.
+2. `nvm use`, then Corepack pnpm `10.34.5`.
+3. PostgreSQL installed and running.
+4. Create database `twitter_clone`.
+5. `cp .env.example .env` and edit `DATABASE_URL`.
+6. `pnpm install`.
+7. `pnpm db:migrate:deploy`.
+8. `pnpm db:seed`.
+9. `pnpm dev`.
+10. Run the validation suite below.
 
 ## Authentication
 
@@ -66,7 +143,7 @@ Custom sessions, not Firebase Auth or Supabase Auth.
 - Session token: 32 random bytes, SHA-256 hashed in PostgreSQL, raw value only in the `flock_session` HttpOnly cookie (`SameSite=Lax`, 7 days, `Secure` in production).
 - Server-side protection: `requireAuthenticatedUser()`.
 
-See [docs/architecture.md](docs/architecture.md) for CSRF trade-offs, cookie attributes, and route protection.
+See [docs/architecture.md](docs/architecture.md) for CSRF, cookie attributes, and route protection.
 
 ## Profiles and search
 
@@ -81,7 +158,7 @@ Follower list: `/users/[username]/followers`. Following list: `/users/[username]
 - Create: `POST /api/tweets` with `{ "content": "..." }` (authenticated). Author comes from the session.
 - Delete: `DELETE /api/tweets/[id]` — owner only (`403` otherwise, `404` if missing).
 - Content is trimmed, required, max 280 characters. Internal newlines are kept.
-- Public profiles list that user's posts newest first.
+- Public profiles list that user's posts newest first (up to 30).
 
 ## Likes
 
@@ -117,16 +194,19 @@ Signed-in `/` is a social home feed, not “only your posts.”
 
 ## Testing
 
-Unit and PostgreSQL integration tests:
+Unit and PostgreSQL integration tests (need a local `DATABASE_URL` or `TEST_DATABASE_URL`):
 
 ```bash
+pnpm lint
+pnpm typecheck
 pnpm test
 pnpm test:coverage
+pnpm build
 ```
 
 Integration tests use `TEST_DATABASE_URL` when set, otherwise `DATABASE_URL`. The URL must look local/test (`localhost`, `127.0.0.1`, `twitter_clone`, or `_test`). Tests insert isolated rows and delete them; they do not reset the database.
 
-Playwright, including the authentication flow:
+Playwright E2E also needs PostgreSQL: the tests register users and hit the running app. `playwright.config.ts` starts `pnpm dev` at `http://127.0.0.1:3000` automatically (`webServer`). Outside CI it reuses an already-running server if one is listening. Install Chromium once, then run:
 
 ```bash
 pnpm exec playwright install chromium
@@ -141,6 +221,7 @@ The auth E2E test registers a unique user, confirms the signed-in home page, log
 | --- | --- |
 | `pnpm dev` | Start the development server |
 | `pnpm build` | Production build |
+| `pnpm start` | Start the production server |
 | `pnpm lint` | Lint the project |
 | `pnpm typecheck` | TypeScript check without emitting files |
 | `pnpm test` | Run unit/integration tests |
@@ -153,12 +234,39 @@ The auth E2E test registers a unique user, confirms the signed-in home page, log
 | `pnpm db:seed` | Upsert the deterministic development seed |
 | `pnpm db:reset` | Drop the local database, migrate, and seed (**destructive**) |
 
-## Architecture
+## Limitations
 
-Feature code lives under `src/modules`. Auth is in `src/modules/auth`. Public profiles and search are in `src/modules/users`. Tweets are in `src/modules/tweets`. Follows are in `src/modules/follows`. The home timeline is in `src/modules/timeline`. Likes are in `src/modules/likes`. HTTP route handlers are in `src/app/api`.
+Implemented: auth, profiles, search, tweets, follows, lists, home timeline with cursor pagination, likes.
 
-See [docs/architecture.md](docs/architecture.md) for the data model, session design, and testing notes.
+Not implemented:
+
+- replies
+- image uploads
+- notifications
+- realtime (WebSockets / SSE)
+
+Other current limits:
+
+- Expired session rows are deleted when seen, not by a background job.
+- CSRF baseline is `SameSite=Lax` plus Origin/Host validation, not synchronizer tokens.
+- Follower and following lists are a first page of 50.
+- Profile tweet lists are a first page of 30.
 
 ## AI-assisted development
 
-Agentic coding tools are used throughout this challenge. Changes are reviewed and validated (lint, typecheck, tests, and build as applicable) before they are committed.
+This repository was built with the **Codex coding agent**, with **GitHub MCP** used where the workflow needed GitHub (creating the empty public repository). Cursor, Claude Code, Copilot, and similar tools were not part of this workflow.
+
+Work was **feature-sliced**, not “build the whole challenge in one shot.” Each commit on `main` is one coherent slice (scaffold, pnpm, Node 24, schema/seed, auth, profiles/search, tweets, follows, timeline, likes). History was kept linear and unsquashed so evaluators can read the progression.
+
+Typical slice:
+
+1. Requirements and acceptance criteria were defined for that slice only.
+2. The coding agent inspected the current repository and existing patterns.
+3. It implemented only that slice (no timeline during tweets, no likes during follows, and so on).
+4. Unit, integration, frontend, and E2E tests were added with the implementation.
+5. The diff was reviewed for security and data boundaries (session identity, origin checks, public vs private fields, self-follow, cursor stability).
+6. `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:coverage`, `pnpm build`, and `pnpm test:e2e` were run as applicable.
+7. Only then was **one** commit created and pushed to `main`.
+8. The next slice started from that verified state.
+
+AI accelerated implementation and test generation. Architecture, scope, trade-offs, review criteria, and acceptance decisions stayed human-directed. Generated code was not accepted solely because it compiled. Git history was preserved on purpose rather than squashed into a single dump.
