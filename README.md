@@ -274,6 +274,8 @@ pnpm test:e2e
 
 The auth E2E test registers a unique user, confirms the signed-in home page, logs out, logs back in, and checks the session again. The search E2E test registers a user, finds them by query, opens the public profile, and checks that email is not shown. The tweet E2E test registers, posts a note, sees it on home and profile, then deletes it. The follow E2E test registers two isolated users, follows from a profile, checks counts and the followers list, then unfollows. The timeline E2E test registers two users, follows, and checks that followed and own tweets appear on home in newest-first order. The likes E2E test follows a user, likes their tweet on home, confirms the same state on the profile, then unlikes. A focused responsive E2E test exercises registration and the signed-in composer/header at a 375px mobile viewport and asserts that the document has no horizontal overflow.
 
+GitHub Actions (`.github/workflows/ci.yml`) runs that same validation on every push to `main` and every pull request targeting `main`: lint, typecheck, PostgreSQL-backed Vitest tests and coverage, production build, and Playwright E2E. CI uses an isolated PostgreSQL 17 service container (`twitter_clone_test`). It never touches Neon or production.
+
 ## Commands
 
 | Command | Purpose |
