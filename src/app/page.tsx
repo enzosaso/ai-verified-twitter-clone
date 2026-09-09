@@ -65,8 +65,8 @@ function GuestHome() {
         Short notes. A small flock.
       </h1>
       <p className="max-w-md text-muted">
-        Sign in to post notes and search people. Follows and the home timeline
-        come later.
+        Sign in to post notes, search people, and follow accounts. A
+        followed-user home timeline comes later.
       </p>
       <div className="flex flex-col gap-3 sm:flex-row">
         <Link

@@ -10,9 +10,10 @@ This project is a pragmatic modular monolith: one Next.js application, one Postg
 - `src/modules/auth` — custom authentication
 - `src/modules/users` — public profiles and people search
 - `src/modules/tweets` — tweet create, delete, and profile lists
+- `src/modules/follows` — follow/unfollow, counts, and follower/following lists
 - `prisma` — schema, migrations, and development seed
 
-Follows, likes, and the home timeline are not present yet.
+Likes and the followed-user home timeline are not present yet.
 
 ## Principles
 
@@ -22,7 +23,7 @@ Follows, likes, and the home timeline are not present yet.
 
 ## Authentication
 
-Custom cookie sessions are implemented. Follows, likes, and the followed-user timeline are not.
+Custom cookie sessions are implemented. Likes and the followed-user timeline are not.
 
 ### HTTP surface
 
@@ -34,8 +35,10 @@ Custom cookie sessions are implemented. Follows, likes, and the followed-user ti
 | `GET` | `/api/auth/me` | Return the authenticated safe user, or `401` |
 | `POST` | `/api/tweets` | Create a tweet for the session user (`201`) |
 | `DELETE` | `/api/tweets/[id]` | Delete own tweet (`204`); `403` if another user owns it |
+| `POST` | `/api/users/[username]/follow` | Follow that user as the session user (`204`, idempotent) |
+| `DELETE` | `/api/users/[username]/follow` | Unfollow that user (`204`, idempotent) |
 
-Pages: `/` (guest or signed-in home with composer), `/login`, `/register`, `/search`, `/users/[username]`.
+Pages: `/` (guest or signed-in home with composer), `/login`, `/register`, `/search`, `/users/[username]`, `/users/[username]/followers`, `/users/[username]/following`.
 
 ## Public profiles and search
 
@@ -53,7 +56,11 @@ Email, `passwordHash`, and session fields are not selected from the database for
 
 `GET /users/[username]` loads the user after lowercasing the username (same rule as registration). Missing users render a 404. Avatars are initials placeholders; there is no upload.
 
-Profiles list that user's posts, newest first (`createdAt DESC`, `id DESC` tie-break), up to 30. Empty profiles show “No posts yet.” Follow counts and follow buttons are not implemented.
+Profiles list that user's posts, newest first (`createdAt DESC`, `id DESC` tie-break), up to 30. Empty profiles show “No posts yet.”
+
+Profiles also show follower and following counts (PostgreSQL `COUNT` on `follows`, not by loading the collections). Counts are public. A Follow/Unfollow control is shown only when the viewer is signed in and the profile is not their own. Guests and owners see counts without a button. Viewer follow-state is loaded with a single composite-key lookup when it is relevant.
+
+Follower and following lists are public HTML routes. They return `PublicProfile` rows only (no email or password hash), newest relationship first (`createdAt DESC`, then the related user id DESC as a stable tie-break), limited to 50.
 
 ### Search
 
@@ -95,6 +102,25 @@ No email, password hash, or session fields. Dates on the page use a UTC `YYYY-MM
 
 The signed-in home composer posts to the API and refreshes. Home shows **your** posts, not a followed-user timeline.
 
+## Follow graph
+
+Authenticated users follow with `POST /api/users/[username]/follow` and unfollow with `DELETE /api/users/[username]/follow`. The follower is always the session user. A client-supplied `followerId` is ignored; these routes do not read a JSON body.
+
+Rules:
+
+- Unauthenticated → `401`
+- Cross-origin mutation → `403`
+- Target user missing → `404`
+- Following or unfollowing yourself → `400` (`FollowSelfError` in application code, before the database `follows_no_self_follow` CHECK)
+- New follow → insert, `204`
+- Follow that already exists → `204`, no duplicate row (unique constraint is treated as success)
+- Unfollow when a row exists → delete, `204`
+- Unfollow when no row exists → `204` (`deleteMany` of zero rows)
+
+Public profile JSON and HTML still omit email, `passwordHash`, and session fields. Social data on a profile is counts plus whether the current viewer follows that profile.
+
+Known limitation: following someone does not change the home feed. There is no followed-user timeline, like, reply, image, or notification surface yet.
+
 ### Normalization and validation
 
 - Email: trim, lowercase, basic `user@host.tld` shape, max 255.
@@ -129,7 +155,7 @@ Name: `flock_session`
 
 ### CSRF
 
-State changes are POST-only. The session cookie is `SameSite=Lax`. POSTs also reject a present `Origin` that does not match the request URL. Missing `Origin` is allowed so non-browser clients and tests still work. This is not a full CSRF token scheme.
+State changes are POST or DELETE, never GET. The session cookie is `SameSite=Lax`. Mutations also reject a present `Origin` that does not match the request URL. Missing `Origin` is allowed so non-browser clients and tests still work. This is not a full CSRF token scheme.
 
 ### Safe user
 
@@ -141,7 +167,9 @@ API responses use `toSafeUser` / `SAFE_USER_SELECT`: `id`, `email`, `username`, 
 | --- | --- |
 | `users` | Accounts. Unique `email` and `username`. |
 | `sessions` | Opaque hashed session tokens, 7-day expiry, cascade on user delete. |
-| `tweets` / `follows` / `likes` | Social graph tables exist but have no product API yet. |
+| `tweets` | Posts. Create/delete API and profile lists are implemented. |
+| `follows` | Follow graph. Follow/unfollow API, counts, and public lists are implemented. Database CHECK still rejects self-follow as a backstop. |
+| `likes` | Schema only. No like product API yet. |
 
 IDs are UUID v4 stored as PostgreSQL `uuid`.
 
@@ -149,7 +177,7 @@ IDs are UUID v4 stored as PostgreSQL `uuid`.
 
 - Unit tests cover validation, token hashing, cookie options, and safe-user mapping.
 - Integration tests hit the route handlers against PostgreSQL.
-- Playwright covers register → authenticated home → logout → login.
+- Playwright covers register → authenticated home → logout → login, plus search, tweets, and a follow/unfollow flow with isolated users.
 
 Database tests use `TEST_DATABASE_URL` if set, otherwise `DATABASE_URL`. Both must look local/test (`localhost`, `127.0.0.1`, `twitter_clone`, or `_test`). Tests create isolated rows and delete them; they do not run `db:reset`.
 

@@ -2,7 +2,7 @@
 
 A Twitter clone built for The Flock AI Verified technical challenge.
 
-The repository currently includes the application scaffold, the relational data model, custom authentication, public profiles, people search, and tweet create/delete. Follows, likes, and the home timeline are not implemented yet.
+The repository currently includes the application scaffold, the relational data model, custom authentication, public profiles, people search, tweet create/delete, and the follow graph (follow/unfollow, counts, and follower/following lists). Likes and the followed-user home timeline are not implemented yet.
 
 ## Stack
 
@@ -70,9 +70,11 @@ See [docs/architecture.md](docs/architecture.md) for CSRF trade-offs, cookie att
 
 ## Profiles and search
 
-Public profile: `/users/[username]` (display name, @username, bio, initials avatar). Email is not shown.
+Public profile: `/users/[username]` (display name, @username, bio, initials avatar, follower/following counts). Email is not shown.
 
 People search: `/search?q=...` and `GET /api/users/search?q=...`. Case-insensitive contains on username or display name, max 20 results. Empty queries return no one. Signed-in home includes a search field and a link to your profile.
+
+Follower list: `/users/[username]/followers`. Following list: `/users/[username]/following`. Both are public reads of public profiles.
 
 ## Tweets
 
@@ -80,6 +82,17 @@ People search: `/search?q=...` and `GET /api/users/search?q=...`. Case-insensiti
 - Delete: `DELETE /api/tweets/[id]` — owner only (`403` otherwise, `404` if missing).
 - Content is trimmed, required, max 280 characters. Internal newlines are kept.
 - Public profiles list that user's posts newest first. Signed-in home has a composer and your own posts. This is not a follow timeline.
+
+## Follows
+
+- Follow: `POST /api/users/[username]/follow` (authenticated). The follower is always the session user.
+- Unfollow: `DELETE /api/users/[username]/follow` (authenticated).
+- Self-follow and self-unfollow are rejected (`400`) in application code, before the database CHECK.
+- Missing target users return `404`. Unauthenticated requests return `401`. Cross-origin mutations return `403`.
+- Duplicate follow and repeated unfollow are idempotent (`204`, no duplicate rows, no 500).
+- Public profiles show follower and following counts for everyone, including guests. Counts come from PostgreSQL `COUNT`, not by loading the full lists.
+- A Follow/Unfollow button appears only for a signed-in user looking at someone else's profile. Guests and own profiles see counts only.
+- Follower and following lists are public, newest relationship first (`createdAt DESC`, then the related user id DESC), up to 50 people.
 
 ## Testing
 
@@ -99,7 +112,7 @@ pnpm exec playwright install chromium
 pnpm test:e2e
 ```
 
-The auth E2E test registers a unique user, confirms the signed-in home page, logs out, logs back in, and checks the session again. The search E2E test registers a user, finds them by query, opens the public profile, and checks that email is not shown. The tweet E2E test registers, posts a note, sees it on home and profile, then deletes it.
+The auth E2E test registers a unique user, confirms the signed-in home page, logs out, logs back in, and checks the session again. The search E2E test registers a user, finds them by query, opens the public profile, and checks that email is not shown. The tweet E2E test registers, posts a note, sees it on home and profile, then deletes it. The follow E2E test registers two isolated users, follows from a profile, checks counts and the followers list, then unfollows.
 
 ## Commands
 
@@ -121,7 +134,7 @@ The auth E2E test registers a unique user, confirms the signed-in home page, log
 
 ## Architecture
 
-Feature code lives under `src/modules`. Auth is in `src/modules/auth`. Public profiles and search are in `src/modules/users`. Tweets are in `src/modules/tweets`. HTTP route handlers are in `src/app/api`.
+Feature code lives under `src/modules`. Auth is in `src/modules/auth`. Public profiles and search are in `src/modules/users`. Tweets are in `src/modules/tweets`. Follows are in `src/modules/follows`. HTTP route handlers are in `src/app/api`.
 
 See [docs/architecture.md](docs/architecture.md) for the data model, session design, and testing notes.
 

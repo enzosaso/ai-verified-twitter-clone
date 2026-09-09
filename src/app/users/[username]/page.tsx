@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
+import { ProfileSocial } from "@/components/profile-social";
 import { TweetList } from "@/components/tweet-list";
 import { UserAvatar } from "@/components/user-avatar";
 import { getCurrentUser } from "@/modules/auth/application/require-user";
+import { getFollowGraph } from "@/modules/follows/application/follows";
 import { getTweetsByAuthorId } from "@/modules/tweets/application/tweets";
 import { getUserProfileByUsername } from "@/modules/users/application/profiles";
 
@@ -21,7 +23,10 @@ export default async function UserProfilePage({
     notFound();
   }
 
-  const tweets = await getTweetsByAuthorId(profile.id);
+  const [tweets, graph] = await Promise.all([
+    getTweetsByAuthorId(profile.id),
+    getFollowGraph(profile.id, currentUser?.id ?? null),
+  ]);
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-5 py-8">
@@ -35,6 +40,15 @@ export default async function UserProfilePage({
           </div>
         </header>
         {profile.bio ? <p className="text-ink">{profile.bio}</p> : null}
+        <ProfileSocial
+          username={profile.username}
+          followerCount={graph.followerCount}
+          followingCount={graph.followingCount}
+          isFollowing={graph.isFollowing}
+          showFollowButton={Boolean(
+            currentUser && currentUser.id !== profile.id,
+          )}
+        />
         <section aria-label="Posts" className="border-t border-line pt-4">
           <h2 className="mb-1 text-sm font-medium uppercase tracking-[0.18em] text-accent">
             Posts
