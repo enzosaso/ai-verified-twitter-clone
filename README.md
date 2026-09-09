@@ -4,6 +4,29 @@ A Twitter clone built for The Flock AI Verified technical challenge.
 
 The app includes custom authentication, public profiles, people search, tweet create/delete, follow/unfollow with follower and following lists, an authenticated home timeline with cursor pagination, and tweet likes. Replies, image uploads, notifications, and realtime updates are not implemented.
 
+## Live demo
+
+**Production: https://ai-verified-twitter-clone.vercel.app/**
+
+Sign in with the seeded demo account. It is a sample account created by the database seed for evaluators, not a production secret:
+
+- Email: `demo@example.com`
+- Password: `Demo1234!`
+
+## Screenshots
+
+![The Flock authenticated desktop timeline](docs/screenshots/home-desktop.png)
+
+_Authenticated home timeline: desktop rail, composer, and seeded posts with like counts._
+
+![The Flock mobile timeline](docs/screenshots/home-mobile.png)
+
+_Home timeline at 375px: top navigation, composer, and tweet actions._
+
+![The Flock public profile](docs/screenshots/profile-desktop.png)
+
+_Public profile: avatar, bio, follower and following counts, follow control, and the user's posts._
+
 ## Stack
 
 - **Next.js** (App Router) — full-stack UI and HTTP layer in one application
