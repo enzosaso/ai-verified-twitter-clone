@@ -61,8 +61,8 @@ export function FollowButton({
         disabled={pending}
         className={
           following
-            ? "h-11 rounded-md border border-line px-4 text-sm font-semibold text-ink hover:bg-white disabled:opacity-60"
-            : "h-11 rounded-md bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-60"
+            ? "h-11 rounded-full border border-line bg-card px-6 text-sm font-bold text-ink hover:border-danger hover:text-danger disabled:opacity-60"
+            : "h-11 rounded-full bg-ink px-6 text-sm font-bold text-white hover:bg-accent disabled:opacity-60"
         }
       >
         {label}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { NavIcon } from "@/components/nav-icon";
 
 export function likeCountLabel(count: number): string {
   return `${count} ${count === 1 ? "like" : "likes"}`;
@@ -57,7 +58,12 @@ export function LikeButton({
   const countText = likeCountLabel(count);
 
   if (!interactive) {
-    return <p className="mt-2 text-sm text-muted">{countText}</p>;
+    return (
+      <p className="mt-2 flex items-center gap-2 text-sm text-muted">
+        <NavIcon name="heart" size={18} />
+        {countText}
+      </p>
+    );
   }
 
   const label = pending
@@ -69,7 +75,7 @@ export function LikeButton({
       : "Like";
 
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-3">
+    <div className="mt-2 flex flex-wrap items-center gap-2">
       <button
         type="button"
         onClick={() => void onToggle()}
@@ -77,10 +83,11 @@ export function LikeButton({
         aria-pressed={liked}
         className={
           liked
-            ? "h-11 rounded-md border border-line px-3 text-sm font-semibold text-ink hover:bg-white disabled:opacity-60"
-            : "h-11 rounded-md border border-line px-3 text-sm font-semibold text-accent hover:bg-white disabled:opacity-60"
+            ? "inline-flex h-11 items-center gap-2 rounded-full bg-like-soft px-4 text-sm font-semibold text-like disabled:opacity-60"
+            : "inline-flex h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold text-muted hover:bg-like-soft hover:text-like disabled:opacity-60"
         }
       >
+        <NavIcon name="heart" size={19} filled={liked} />
         {label}
       </button>
       <span className="text-sm text-muted">{countText}</span>

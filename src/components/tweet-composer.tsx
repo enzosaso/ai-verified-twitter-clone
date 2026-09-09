@@ -43,23 +43,23 @@ export function TweetComposer() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-3 rounded-xl border border-line bg-card p-4">
-      <label htmlFor="tweet-content" className="text-sm font-medium">
+    <form onSubmit={onSubmit} className="grid gap-3 rounded-2xl border border-line bg-card p-4">
+      <label htmlFor="tweet-content" className="text-sm font-semibold">
         Compose a post
       </label>
       <textarea
         id="tweet-content"
         name="content"
-        rows={4}
+        rows={3}
         maxLength={TWEET_MAX_LENGTH}
         value={content}
         onChange={(event) => setContent(event.target.value)}
         placeholder="What’s happening?"
-        className="w-full resize-y rounded-md border border-line bg-paper px-3 py-2 text-base text-ink"
+        className="w-full resize-y border-none bg-card text-[17px] leading-relaxed text-ink outline-none placeholder:text-muted"
       />
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 border-t border-line pt-3">
         <p
-          className={`text-sm ${remaining < 20 ? "text-danger" : "text-muted"}`}
+          className={`text-sm tabular-nums ${remaining < 20 ? "text-danger" : "text-muted"}`}
           aria-live="polite"
         >
           {remaining} characters left
@@ -67,7 +67,7 @@ export function TweetComposer() {
         <button
           type="submit"
           disabled={pending || content.trim().length === 0}
-          className="h-11 rounded-md bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-60"
+          className="h-11 rounded-full bg-accent px-6 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-50"
         >
           {pending ? "Posting…" : "Post"}
         </button>

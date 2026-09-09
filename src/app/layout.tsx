@@ -1,16 +1,10 @@
 import type { Metadata } from "next";
-import { Figtree, Instrument_Serif } from "next/font/google";
+import { Manrope } from "next/font/google";
 import "./globals.css";
 
-const figtree = Figtree({
+const manrope = Manrope({
   subsets: ["latin"],
-  variable: "--font-figtree",
-});
-
-const instrument = Instrument_Serif({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-instrument",
+  variable: "--font-manrope",
 });
 
 export const metadata: Metadata = {
@@ -21,7 +15,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en">
-      <body className={`${figtree.variable} ${instrument.variable} antialiased`}>
+      <body className={`${manrope.variable} antialiased`}>
         {children}
       </body>
     </html>

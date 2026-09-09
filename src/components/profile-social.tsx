@@ -18,18 +18,19 @@ export function ProfileSocial({
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <nav aria-label="Follow stats" className="flex flex-wrap gap-4 text-sm">
+      <nav aria-label="Follow stats" className="flex flex-wrap gap-5 text-[15px]">
         <Link
           href={`/users/${username}/followers`}
-          className="text-ink no-underline hover:underline"
+          className="text-muted no-underline hover:underline"
         >
-          <span className="font-semibold">{followerCount}</span> {followerLabel}
+          <span className="font-bold tabular-nums text-ink">{followerCount}</span>{" "}
+          {followerLabel}
         </Link>
         <Link
           href={`/users/${username}/following`}
-          className="text-ink no-underline hover:underline"
+          className="text-muted no-underline hover:underline"
         >
-          <span className="font-semibold">{followingCount}</span> following
+          <span className="font-bold tabular-nums text-ink">{followingCount}</span> following
         </Link>
       </nav>
       {showFollowButton ? (

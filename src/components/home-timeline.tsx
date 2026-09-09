@@ -93,27 +93,25 @@ export function HomeTimeline({
   }
 
   return (
-    <section aria-label="Timeline">
-      <h2 className="mb-1 text-sm font-medium uppercase tracking-[0.18em] text-accent">
-        Home
-      </h2>
+    <section aria-label="Timeline" className="flex flex-col gap-3">
+      <h2 className="px-1 text-[15px] font-extrabold text-ink">Home</h2>
       <TweetList
         tweets={tweets}
         currentUserId={currentUserId}
         emptyMessage="Your timeline is empty. Follow people or post a note."
       />
       {error ? (
-        <p role="alert" className="mt-3 text-sm text-danger">
+        <p role="alert" className="text-sm text-danger">
           {error}
         </p>
       ) : null}
       {nextCursor ? (
-        <div className="mt-4">
+        <div>
           <button
             type="button"
             onClick={() => void loadMore()}
             disabled={pending}
-            className="h-11 w-full rounded-md border border-line px-4 text-sm font-semibold text-ink hover:bg-white disabled:opacity-60"
+            className="h-11 w-full rounded-full border border-line bg-card px-4 text-sm font-bold text-accent hover:border-accent disabled:opacity-60"
           >
             {pending ? "Loading…" : "Load more"}
           </button>

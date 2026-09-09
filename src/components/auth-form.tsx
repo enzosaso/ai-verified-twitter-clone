@@ -74,7 +74,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   return (
     <form onSubmit={onSubmit} className="grid gap-4" noValidate>
       {errors.form ? (
-        <p role="alert" className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">
+        <p role="alert" className="rounded-xl bg-danger/10 px-3 py-2.5 text-sm font-medium text-danger">
           {errors.form}
         </p>
       ) : null}
@@ -121,7 +121,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       <button
         type="submit"
         disabled={pending}
-        className="mt-1 h-11 rounded-md bg-accent px-4 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:opacity-60"
+        className="mt-1 h-11 rounded-full bg-accent px-6 text-[15px] font-bold text-white transition hover:bg-accent-hover disabled:opacity-60"
       >
         {pending
           ? mode === "register"
@@ -132,18 +132,18 @@ export function AuthForm({ mode }: AuthFormProps) {
             : "Sign in"}
       </button>
 
-      <p className="text-sm text-muted">
+      <p className="text-center text-sm text-muted">
         {mode === "register" ? (
           <>
             Already have an account?{" "}
-            <Link href="/login" className="font-medium text-accent underline">
+            <Link href="/login" className="font-bold text-accent no-underline hover:underline">
               Sign in
             </Link>
           </>
         ) : (
           <>
             New here?{" "}
-            <Link href="/register" className="font-medium text-accent underline">
+            <Link href="/register" className="font-bold text-accent no-underline hover:underline">
               Create an account
             </Link>
           </>
@@ -179,7 +179,7 @@ function Field({
 
   return (
     <div className="grid gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium">
+      <label htmlFor={id} className="text-[13.5px] font-bold text-ink/80">
         {label}
       </label>
       <input
@@ -189,15 +189,15 @@ function Field({
         autoComplete={autoComplete}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}
-        className="h-11 rounded-md border border-line bg-card px-3 text-base text-ink"
+        className="h-12 rounded-xl border border-line bg-card px-3.5 text-base text-ink outline-none focus:border-accent"
       />
       {hint ? (
-        <p id={`${id}-hint`} className="text-xs text-muted">
+        <p id={`${id}-hint`} className="text-[13px] text-muted">
           {hint}
         </p>
       ) : null}
       {error ? (
-        <p id={`${id}-error`} role="alert" className="text-xs text-danger">
+        <p id={`${id}-error`} role="alert" className="text-[13px] font-medium text-danger">
           {error}
         </p>
       ) : null}

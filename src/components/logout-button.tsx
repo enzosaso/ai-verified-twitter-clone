@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { NavIcon } from "@/components/nav-icon";
 
 export function LogoutButton() {
   const router = useRouter();
@@ -22,8 +23,9 @@ export function LogoutButton() {
       type="button"
       onClick={() => void logout()}
       disabled={pending}
-      className="h-11 rounded-md border border-line px-4 text-sm font-medium text-ink hover:bg-white disabled:opacity-60"
+      className="inline-flex min-h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-medium text-muted hover:bg-card hover:text-ink disabled:opacity-60 lg:justify-start"
     >
+      <NavIcon name="logout" />
       {pending ? "Signing out…" : "Sign out"}
     </button>
   );

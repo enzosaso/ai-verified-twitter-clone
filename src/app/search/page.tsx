@@ -1,4 +1,4 @@
-import { AppHeader } from "@/components/app-header";
+import { AppShell } from "@/components/app-shell";
 import { SearchForm } from "@/components/search-form";
 import { UserList } from "@/components/user-list";
 import { getCurrentUser } from "@/modules/auth/application/require-user";
@@ -13,20 +13,13 @@ export default async function SearchPage({
   const result = await searchUsers(q);
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-5 py-8">
-      <AppHeader
-        username={currentUser?.username}
-        searchQuery={result.query}
-        showSearch={false}
-      />
-      <main className="flex flex-col gap-5">
-        <div>
-          <h1 className="mb-3 font-display text-3xl">Search people</h1>
-          <SearchForm defaultQuery={result.query} autoFocus />
-        </div>
+    <AppShell username={currentUser?.username} searchQuery={result.query}>
+      <div className="flex flex-col gap-4">
+        <h1 className="text-[27px] font-extrabold tracking-[-0.025em]">Search people</h1>
+        <SearchForm defaultQuery={result.query} autoFocus />
         <SearchStatus result={result} />
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }
 
@@ -36,7 +29,11 @@ function SearchStatus({
   result: Awaited<ReturnType<typeof searchUsers>>;
 }) {
   if (result.reason === "empty") {
-    return <p className="text-muted">Type a name or username to find people.</p>;
+    return (
+      <p className="rounded-2xl border border-dashed border-line bg-card px-4 py-8 text-center text-muted">
+        Type a name or username to find people.
+      </p>
+    );
   }
 
   if (result.reason === "too_long") {
@@ -45,13 +42,15 @@ function SearchStatus({
 
   if (result.users.length === 0) {
     return (
-      <p className="text-muted">No people match “{result.query}”.</p>
+      <p className="rounded-2xl border border-dashed border-line bg-card px-4 py-8 text-center text-muted">
+        No people match “{result.query}”.
+      </p>
     );
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm text-muted">
+      <p className="px-1 text-sm text-muted">
         {result.users.length} {result.users.length === 1 ? "person" : "people"} matching “
         {result.query}”
       </p>

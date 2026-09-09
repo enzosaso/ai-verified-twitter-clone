@@ -25,7 +25,7 @@ export function DeleteTweetButton({ tweetId }: { tweetId: string }) {
       type="button"
       onClick={() => void onDelete()}
       disabled={pending}
-      className="inline-flex min-h-11 min-w-11 items-center justify-center text-sm font-medium text-danger hover:underline disabled:opacity-60"
+      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full px-3 text-sm font-semibold text-muted hover:bg-paper hover:text-danger disabled:opacity-60"
     >
       {pending ? "Deleting…" : "Delete"}
     </button>

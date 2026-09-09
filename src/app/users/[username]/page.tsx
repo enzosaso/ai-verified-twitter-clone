@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { AppHeader } from "@/components/app-header";
+import { AppShell } from "@/components/app-shell";
 import { ProfileSocial } from "@/components/profile-social";
 import { TweetList } from "@/components/tweet-list";
 import { UserAvatar } from "@/components/user-avatar";
@@ -29,37 +29,47 @@ export default async function UserProfilePage({
   ]);
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-5 py-8">
-      <AppHeader username={currentUser?.username} showSearch={Boolean(currentUser)} />
-      <main className="flex flex-col gap-6">
-        <header className="flex items-start gap-4">
-          <UserAvatar displayName={profile.displayName} size="lg" />
-          <div className="min-w-0 pt-1">
-            <h1 className="font-display text-3xl leading-tight">{profile.displayName}</h1>
-            <p className="break-all text-muted">@{profile.username}</p>
+    <AppShell username={currentUser?.username} showSearch={Boolean(currentUser)}>
+      <div className="flex flex-col gap-4">
+        <section className="overflow-hidden rounded-3xl border border-line bg-card">
+          <div className="h-24 bg-accent-soft" />
+          <div className="flex flex-col gap-4 px-5 pb-5">
+            <div className="-mt-9 flex items-end justify-between gap-4">
+              <span className="rounded-full border-4 border-card">
+                <UserAvatar displayName={profile.displayName} size="lg" />
+              </span>
+            </div>
+            <div className="flex flex-col gap-2">
+              <div>
+                <h1 className="text-[25px] font-extrabold leading-tight tracking-[-0.02em]">
+                  {profile.displayName}
+                </h1>
+                <p className="break-all text-[15px] text-muted">@{profile.username}</p>
+              </div>
+              {profile.bio ? (
+                <p className="max-w-[54ch] leading-relaxed text-ink">{profile.bio}</p>
+              ) : null}
+            </div>
+            <ProfileSocial
+              username={profile.username}
+              followerCount={graph.followerCount}
+              followingCount={graph.followingCount}
+              isFollowing={graph.isFollowing}
+              showFollowButton={Boolean(
+                currentUser && currentUser.id !== profile.id,
+              )}
+            />
           </div>
-        </header>
-        {profile.bio ? <p className="text-ink">{profile.bio}</p> : null}
-        <ProfileSocial
-          username={profile.username}
-          followerCount={graph.followerCount}
-          followingCount={graph.followingCount}
-          isFollowing={graph.isFollowing}
-          showFollowButton={Boolean(
-            currentUser && currentUser.id !== profile.id,
-          )}
-        />
-        <section aria-label="Posts" className="border-t border-line pt-4">
-          <h2 className="mb-1 text-sm font-medium uppercase tracking-[0.18em] text-accent">
-            Posts
-          </h2>
+        </section>
+        <section aria-label="Posts" className="flex flex-col gap-3">
+          <h2 className="px-1 text-[15px] font-extrabold text-ink">Posts</h2>
           <TweetList
             tweets={tweets}
             currentUserId={currentUser?.id}
             emptyMessage="No posts yet."
           />
         </section>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }
