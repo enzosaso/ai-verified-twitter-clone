@@ -2,7 +2,7 @@
 
 A Twitter clone built for The Flock AI Verified technical challenge.
 
-The repository currently includes the application scaffold, the relational data model, custom authentication, public profiles, and people search. Tweets, follows, likes, and timeline are not implemented yet.
+The repository currently includes the application scaffold, the relational data model, custom authentication, public profiles, people search, and tweet create/delete. Follows, likes, and the home timeline are not implemented yet.
 
 ## Stack
 
@@ -74,6 +74,13 @@ Public profile: `/users/[username]` (display name, @username, bio, initials avat
 
 People search: `/search?q=...` and `GET /api/users/search?q=...`. Case-insensitive contains on username or display name, max 20 results. Empty queries return no one. Signed-in home includes a search field and a link to your profile.
 
+## Tweets
+
+- Create: `POST /api/tweets` with `{ "content": "..." }` (authenticated). Author comes from the session.
+- Delete: `DELETE /api/tweets/[id]` — owner only (`403` otherwise, `404` if missing).
+- Content is trimmed, required, max 280 characters. Internal newlines are kept.
+- Public profiles list that user's posts newest first. Signed-in home has a composer and your own posts. This is not a follow timeline.
+
 ## Testing
 
 Unit and PostgreSQL integration tests:
@@ -92,7 +99,7 @@ pnpm exec playwright install chromium
 pnpm test:e2e
 ```
 
-The auth E2E test registers a unique user, confirms the signed-in home page, logs out, logs back in, and checks the session again. The search E2E test registers a user, finds them by query, opens the public profile, and checks that email is not shown.
+The auth E2E test registers a unique user, confirms the signed-in home page, logs out, logs back in, and checks the session again. The search E2E test registers a user, finds them by query, opens the public profile, and checks that email is not shown. The tweet E2E test registers, posts a note, sees it on home and profile, then deletes it.
 
 ## Commands
 
@@ -114,7 +121,7 @@ The auth E2E test registers a unique user, confirms the signed-in home page, log
 
 ## Architecture
 
-Feature code lives under `src/modules`. Auth is in `src/modules/auth`. Public profiles and search are in `src/modules/users`. HTTP route handlers are in `src/app/api`.
+Feature code lives under `src/modules`. Auth is in `src/modules/auth`. Public profiles and search are in `src/modules/users`. Tweets are in `src/modules/tweets`. HTTP route handlers are in `src/app/api`.
 
 See [docs/architecture.md](docs/architecture.md) for the data model, session design, and testing notes.
 

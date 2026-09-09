@@ -9,9 +9,10 @@ This project is a pragmatic modular monolith: one Next.js application, one Postg
 - `src/lib` — Prisma client and Argon2id password helpers
 - `src/modules/auth` — custom authentication
 - `src/modules/users` — public profiles and people search
+- `src/modules/tweets` — tweet create, delete, and profile lists
 - `prisma` — schema, migrations, and development seed
 
-Social feature modules (`tweets`, `follows`, `likes`) are not present yet.
+Follows, likes, and the home timeline are not present yet.
 
 ## Principles
 
@@ -21,7 +22,7 @@ Social feature modules (`tweets`, `follows`, `likes`) are not present yet.
 
 ## Authentication
 
-Custom cookie sessions are implemented. Tweets, follows, likes, and timeline are not.
+Custom cookie sessions are implemented. Follows, likes, and the followed-user timeline are not.
 
 ### HTTP surface
 
@@ -31,8 +32,10 @@ Custom cookie sessions are implemented. Tweets, follows, likes, and timeline are
 | `POST` | `/api/auth/login` | Verify credentials, create session, set cookie (`200`) |
 | `POST` | `/api/auth/logout` | Delete current session if present, clear cookie (`204`, idempotent) |
 | `GET` | `/api/auth/me` | Return the authenticated safe user, or `401` |
+| `POST` | `/api/tweets` | Create a tweet for the session user (`201`) |
+| `DELETE` | `/api/tweets/[id]` | Delete own tweet (`204`); `403` if another user owns it |
 
-Pages: `/` (guest or signed-in home), `/login`, `/register`, `/search`, `/users/[username]`.
+Pages: `/` (guest or signed-in home with composer), `/login`, `/register`, `/search`, `/users/[username]`.
 
 ## Public profiles and search
 
@@ -50,7 +53,7 @@ Email, `passwordHash`, and session fields are not selected from the database for
 
 `GET /users/[username]` loads the user after lowercasing the username (same rule as registration). Missing users render a 404. Avatars are initials placeholders; there is no upload.
 
-The profile layout leaves room for later posts, counts, and a follow button. Those are not implemented.
+Profiles list that user's posts, newest first (`createdAt DESC`, `id DESC` tie-break), up to 30. Empty profiles show “No posts yet.” Follow counts and follow buttons are not implemented.
 
 ### Search
 
@@ -63,6 +66,34 @@ The profile layout leaves room for later posts, counts, and a follow button. Tho
 - Order: exact username, username prefix, exact display name, display-name prefix, then other contains matches, then username A–Z.
 
 Search is public. Knowing that a username exists is intentional.
+
+## Tweets
+
+Authenticated users create posts with `POST /api/tweets`. The author is always the session user; a client-supplied `authorId` is ignored.
+
+Content rules:
+
+- Trim leading and trailing whitespace, then persist. Internal newlines are kept.
+- Empty or whitespace-only content is rejected.
+- Maximum 280 characters after trim. Database `VARCHAR(280)` is a backstop.
+
+Delete is `DELETE /api/tweets/[id]`:
+
+- Unauthenticated → `401` (checked before lookup)
+- Missing tweet → `404` (no extra tweet payload)
+- Owned by someone else → `403` (no tweet body)
+- Owner → delete, `204`
+
+UI hiding of the delete button is not authorization.
+
+Public tweet JSON:
+
+- `id`, `content`, `createdAt` (ISO)
+- `author`: `id`, `username`, `displayName`, `avatarUrl`
+
+No email, password hash, or session fields. Dates on the page use a UTC `YYYY-MM-DD HH:mm UTC` string from the ISO timestamp to avoid hydration mismatches.
+
+The signed-in home composer posts to the API and refreshes. Home shows **your** posts, not a followed-user timeline.
 
 ### Normalization and validation
 
