@@ -77,8 +77,8 @@ export function LikeButton({
         aria-pressed={liked}
         className={
           liked
-            ? "h-8 rounded-md border border-line px-3 text-sm font-semibold text-ink hover:bg-white disabled:opacity-60"
-            : "h-8 rounded-md border border-line px-3 text-sm font-semibold text-accent hover:bg-white disabled:opacity-60"
+            ? "h-11 rounded-md border border-line px-3 text-sm font-semibold text-ink hover:bg-white disabled:opacity-60"
+            : "h-11 rounded-md border border-line px-3 text-sm font-semibold text-accent hover:bg-white disabled:opacity-60"
         }
       >
         {label}

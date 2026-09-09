@@ -67,7 +67,7 @@ export function TweetComposer() {
         <button
           type="submit"
           disabled={pending || content.trim().length === 0}
-          className="h-10 rounded-md bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-60"
+          className="h-11 rounded-md bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-60"
         >
           {pending ? "Posting…" : "Post"}
         </button>

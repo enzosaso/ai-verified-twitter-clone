@@ -36,7 +36,7 @@ export default async function UserProfilePage({
           <UserAvatar displayName={profile.displayName} size="lg" />
           <div className="min-w-0 pt-1">
             <h1 className="font-display text-3xl leading-tight">{profile.displayName}</h1>
-            <p className="text-muted">@{profile.username}</p>
+            <p className="break-all text-muted">@{profile.username}</p>
           </div>
         </header>
         {profile.bio ? <p className="text-ink">{profile.bio}</p> : null}

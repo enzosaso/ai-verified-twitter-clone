@@ -14,19 +14,22 @@ export function AppHeader({
 }) {
   return (
     <header className="mb-8 flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Wordmark />
         {username ? (
-          <nav aria-label="Account" className="flex items-center gap-2 text-sm">
+          <nav
+            aria-label="Account"
+            className="flex items-center gap-2 text-sm sm:justify-end"
+          >
             <Link
               href="/search"
-              className="rounded-md px-2 py-1 font-medium text-ink hover:underline"
+              className="inline-flex min-h-11 items-center rounded-md px-2 font-medium text-ink hover:underline"
             >
               Search
             </Link>
             <Link
               href={`/users/${username}`}
-              className="rounded-md px-2 py-1 font-medium text-ink hover:underline"
+              className="inline-flex min-h-11 items-center rounded-md px-2 font-medium text-ink hover:underline"
             >
               Profile
             </Link>

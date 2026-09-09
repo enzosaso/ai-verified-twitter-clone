@@ -113,7 +113,7 @@ export function HomeTimeline({
             type="button"
             onClick={() => void loadMore()}
             disabled={pending}
-            className="h-10 w-full rounded-md border border-line px-4 text-sm font-semibold text-ink hover:bg-white disabled:opacity-60"
+            className="h-11 w-full rounded-md border border-line px-4 text-sm font-semibold text-ink hover:bg-white disabled:opacity-60"
           >
             {pending ? "Loading…" : "Load more"}
           </button>
