@@ -2,7 +2,7 @@
 
 A Twitter clone built for The Flock AI Verified technical challenge.
 
-The repository currently includes the application scaffold, the relational data model, and custom authentication. Tweets, follows, likes, timeline, and search are not implemented yet.
+The repository currently includes the application scaffold, the relational data model, custom authentication, public profiles, and people search. Tweets, follows, likes, and timeline are not implemented yet.
 
 ## Stack
 
@@ -68,6 +68,12 @@ Custom sessions, not Firebase Auth or Supabase Auth.
 
 See [docs/architecture.md](docs/architecture.md) for CSRF trade-offs, cookie attributes, and route protection.
 
+## Profiles and search
+
+Public profile: `/users/[username]` (display name, @username, bio, initials avatar). Email is not shown.
+
+People search: `/search?q=...` and `GET /api/users/search?q=...`. Case-insensitive contains on username or display name, max 20 results. Empty queries return no one. Signed-in home includes a search field and a link to your profile.
+
 ## Testing
 
 Unit and PostgreSQL integration tests:
@@ -86,7 +92,7 @@ pnpm exec playwright install chromium
 pnpm test:e2e
 ```
 
-The auth E2E test registers a unique user, confirms the signed-in home page, logs out, logs back in, and checks the session again.
+The auth E2E test registers a unique user, confirms the signed-in home page, logs out, logs back in, and checks the session again. The search E2E test registers a user, finds them by query, opens the public profile, and checks that email is not shown.
 
 ## Commands
 
@@ -108,7 +114,7 @@ The auth E2E test registers a unique user, confirms the signed-in home page, log
 
 ## Architecture
 
-Feature code lives under `src/modules`. Auth is in `src/modules/auth` (domain, application, infrastructure). HTTP route handlers are in `src/app/api/auth`.
+Feature code lives under `src/modules`. Auth is in `src/modules/auth`. Public profiles and search are in `src/modules/users`. HTTP route handlers are in `src/app/api`.
 
 See [docs/architecture.md](docs/architecture.md) for the data model, session design, and testing notes.
 

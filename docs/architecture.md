@@ -8,6 +8,7 @@ This project is a pragmatic modular monolith: one Next.js application, one Postg
 - `src/components` — shared UI
 - `src/lib` — Prisma client and Argon2id password helpers
 - `src/modules/auth` — custom authentication
+- `src/modules/users` — public profiles and people search
 - `prisma` — schema, migrations, and development seed
 
 Social feature modules (`tweets`, `follows`, `likes`) are not present yet.
@@ -20,7 +21,7 @@ Social feature modules (`tweets`, `follows`, `likes`) are not present yet.
 
 ## Authentication
 
-Custom cookie sessions are implemented. Tweets, follows, likes, timeline, and search are not.
+Custom cookie sessions are implemented. Tweets, follows, likes, and timeline are not.
 
 ### HTTP surface
 
@@ -31,7 +32,37 @@ Custom cookie sessions are implemented. Tweets, follows, likes, timeline, and se
 | `POST` | `/api/auth/logout` | Delete current session if present, clear cookie (`204`, idempotent) |
 | `GET` | `/api/auth/me` | Return the authenticated safe user, or `401` |
 
-Pages: `/` (guest or signed-in home), `/login`, `/register`.
+Pages: `/` (guest or signed-in home), `/login`, `/register`, `/search`, `/users/[username]`.
+
+## Public profiles and search
+
+Profiles and people search are public reads. They return a `PublicProfile` only:
+
+- `id`
+- `username`
+- `displayName`
+- `bio`
+- `avatarUrl`
+
+Email, `passwordHash`, and session fields are not selected from the database for these surfaces.
+
+### Profile
+
+`GET /users/[username]` loads the user after lowercasing the username (same rule as registration). Missing users render a 404. Avatars are initials placeholders; there is no upload.
+
+The profile layout leaves room for later posts, counts, and a follow button. Those are not implemented.
+
+### Search
+
+`GET /search?q=` (HTML) and `GET /api/users/search?q=` (JSON).
+
+- Trim the query. Empty queries return no users (they do not list everyone).
+- Queries over 64 characters are rejected.
+- Match is case-insensitive `contains` on `username` OR `displayName` (Prisma `mode: "insensitive"`, no raw SQL, no trigram index).
+- At most 20 results, from a fetch of up to 50 matches.
+- Order: exact username, username prefix, exact display name, display-name prefix, then other contains matches, then username A–Z.
+
+Search is public. Knowing that a username exists is intentional.
 
 ### Normalization and validation
 

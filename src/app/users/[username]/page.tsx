@@ -1,0 +1,40 @@
+import { notFound } from "next/navigation";
+import { AppHeader } from "@/components/app-header";
+import { UserAvatar } from "@/components/user-avatar";
+import { getCurrentUser } from "@/modules/auth/application/require-user";
+import { getUserProfileByUsername } from "@/modules/users/application/profiles";
+
+export default async function UserProfilePage({
+  params,
+}: {
+  params: Promise<{ username: string }>;
+}) {
+  const { username } = await params;
+  const [profile, currentUser] = await Promise.all([
+    getUserProfileByUsername(username),
+    getCurrentUser(),
+  ]);
+
+  if (!profile) {
+    notFound();
+  }
+
+  return (
+    <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-5 py-8">
+      <AppHeader username={currentUser?.username} showSearch={Boolean(currentUser)} />
+      <main className="flex flex-col gap-6">
+        <header className="flex items-start gap-4">
+          <UserAvatar displayName={profile.displayName} size="lg" />
+          <div className="min-w-0 pt-1">
+            <h1 className="font-display text-3xl leading-tight">{profile.displayName}</h1>
+            <p className="text-muted">@{profile.username}</p>
+          </div>
+        </header>
+        {profile.bio ? <p className="text-ink">{profile.bio}</p> : null}
+        <section aria-label="Posts" className="border-t border-line pt-6 text-sm text-muted">
+          Posts from this account will show up here.
+        </section>
+      </main>
+    </div>
+  );
+}
