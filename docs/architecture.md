@@ -1,71 +1,104 @@
 # Architecture
 
-This project is a pragmatic modular monolith: one Next.js application, one PostgreSQL database, and feature modules that will be added as the product grows.
+This project is a pragmatic modular monolith: one Next.js application, one PostgreSQL database, and feature modules that grow with the product.
 
 ## Current boundaries
 
-- `src/app` — App Router pages, layouts, and HTTP entry points
-- `src/components` — shared UI used across routes
-- `src/lib` — application-wide utilities and infrastructure (Prisma client, password hashing)
-- `prisma` — database schema, migrations, and development seed
+- `src/app` — App Router pages, layouts, and HTTP route handlers
+- `src/components` — shared UI
+- `src/lib` — Prisma client and Argon2id password helpers
+- `src/modules/auth` — custom authentication
+- `prisma` — schema, migrations, and development seed
 
-Feature modules will live under `src/modules/<feature>` when the first product slice lands. Until then that directory is intentionally absent.
+Social feature modules (`tweets`, `follows`, `likes`) are not present yet.
 
 ## Principles
 
-- Keep the stack small: Next.js, TypeScript, Prisma, PostgreSQL, and the test tools already in the repository.
-- Prefer straightforward modules over Clean Architecture, CQRS, event sourcing, or extra services.
-- Authentication will be custom application code, not Firebase Auth or Supabase Auth.
-- Persistence is PostgreSQL. Schema is evolved with Prisma migrations.
+- Keep the stack small: Next.js, TypeScript, Prisma, PostgreSQL, and the existing test tools.
+- Prefer functions over classes and skip Clean Architecture / CQRS ceremony.
+- Authentication is custom application code, not Firebase Auth or Supabase Auth.
+
+## Authentication
+
+Custom cookie sessions are implemented. Tweets, follows, likes, timeline, and search are not.
+
+### HTTP surface
+
+| Method | Path | Behavior |
+| --- | --- | --- |
+| `POST` | `/api/auth/register` | Create user + session, set cookie, return safe user (`201`) |
+| `POST` | `/api/auth/login` | Verify credentials, create session, set cookie (`200`) |
+| `POST` | `/api/auth/logout` | Delete current session if present, clear cookie (`204`, idempotent) |
+| `GET` | `/api/auth/me` | Return the authenticated safe user, or `401` |
+
+Pages: `/` (guest or signed-in home), `/login`, `/register`.
+
+### Normalization and validation
+
+- Email: trim, lowercase, basic `user@host.tld` shape, max 255.
+- Username: trim, lowercase, 3–32 chars, `[a-z0-9_]+`. Stored lowercase so the unique index is case-insensitive without `citext`.
+- Display name: trim, 1–50 characters.
+- Password: 8–128 characters, hashed with Argon2id (`src/lib/password.ts`). Never logged or returned.
+
+Duplicate email/username become `409` application errors, not raw Prisma payloads. Login failures use one generic `401` (`Invalid email or password`) whether the email is missing or the password is wrong.
+
+### Sessions
+
+- Token: 32 cryptographically random bytes, base64url.
+- Storage: SHA-256 hex of the token in `sessions.token_hash`. The raw token is only in the cookie.
+- Lifetime: 7 days. No rolling refresh.
+- Expired sessions are treated as logged out. The expired row is deleted opportunistically. There is no background cleanup job.
+
+### Cookie
+
+Name: `flock_session`
+
+- `HttpOnly`
+- `SameSite=Lax`
+- `Path=/`
+- `Max-Age` 7 days
+- `Secure` when `NODE_ENV=production`
+
+### Route protection
+
+`requireAuthenticatedUser()` (and `getCurrentUser()`) read the cookie on the server, hash the token, and load an unexpired session. UI hiding is not authorization. There is no Edge middleware: Prisma stays on the Node server.
+
+`requireAuthenticatedUserFromToken()` is the same check without Next.js cookies, for tests and route handlers.
+
+### CSRF
+
+State changes are POST-only. The session cookie is `SameSite=Lax`. POSTs also reject a present `Origin` that does not match the request URL. Missing `Origin` is allowed so non-browser clients and tests still work. This is not a full CSRF token scheme.
+
+### Safe user
+
+API responses use `toSafeUser` / `SAFE_USER_SELECT`: `id`, `email`, `username`, `displayName`, `bio`, `avatarUrl`. `passwordHash` and session hashes are never returned.
 
 ## Data model
 
-The current schema is the social graph and the tables custom auth will need. Authentication behavior (register, login, session cookies) is **not** implemented yet. `Session` and `User.passwordHash` exist so the next slice can add that behavior without another schema redesign.
-
 | Table | Role |
 | --- | --- |
-| `users` | Accounts. Unique `email` and `username`. Optional `bio` and `avatar_url` placeholder. |
-| `sessions` | Future custom sessions. Unique `token_hash`, belongs to one user. |
-| `tweets` | Status text, max 280 characters at the database (`VARCHAR(280)`). Application validation will still be required. |
-| `follows` | Directed edge `follower_id → following_id`. Composite primary key prevents duplicates. |
-| `likes` | Pair of `user_id` + `tweet_id`. Composite primary key prevents duplicates. |
+| `users` | Accounts. Unique `email` and `username`. |
+| `sessions` | Opaque hashed session tokens, 7-day expiry, cascade on user delete. |
+| `tweets` / `follows` / `likes` | Social graph tables exist but have no product API yet. |
 
-### ID strategy
+IDs are UUID v4 stored as PostgreSQL `uuid`.
 
-All primary keys are UUID v4 values stored as PostgreSQL `uuid`. Prisma generates them with `@default(uuid())`. UUIDs avoid a shared sequence, are stable in seed data, and do not leak row counts. We did not enable `pgcrypto` / `uuid-ossp` because Prisma client generation is enough for this app and seed.
+## Testing
 
-### Username uniqueness
+- Unit tests cover validation, token hashing, cookie options, and safe-user mapping.
+- Integration tests hit the route handlers against PostgreSQL.
+- Playwright covers register → authenticated home → logout → login.
 
-`username` is unique. Values are stored in lowercase in the seed. Application writes will normalize to lowercase so the unique index is effectively case-insensitive without installing `citext`.
+Database tests use `TEST_DATABASE_URL` if set, otherwise `DATABASE_URL`. Both must look local/test (`localhost`, `127.0.0.1`, `twitter_clone`, or `_test`). Tests create isolated rows and delete them; they do not run `db:reset`.
 
-### Follow graph
-
-`follows` is a directed adjacency list. Looking up who a user follows uses the composite primary key prefix on `follower_id`. Looking up followers uses `follows_following_id_idx`.
-
-Self-follows are rejected in PostgreSQL with a CHECK constraint (`follows_no_self_follow`: `follower_id <> following_id`). Prisma cannot express that CHECK in the schema file, so it lives in the SQL migration. Application logic should still reject self-follow before hitting the database.
-
-### Cascades
-
-Deleting a user deletes their sessions, tweets, follows (either side), and likes. Deleting a tweet deletes its likes. Foreign keys use `ON DELETE CASCADE`.
-
-### Indexes
-
-Only access paths we already know:
-
-- `tweets (author_id, created_at DESC)` — a user's tweets
-- `tweets (created_at DESC)` — reverse-chronological feeds
-- `follows (following_id)` — follower lists
-- `likes (tweet_id)` — like counts / who liked a tweet
-- unique indexes from `users.email`, `users.username`, `sessions.token_hash`, and the follow/like primary keys
-
-No trigram or full-text indexes yet. Search is not implemented.
-
-### Password hashing
-
-Passwords are hashed with Argon2id via `@node-rs/argon2` (19 MiB memory, 2 iterations, parallelism 1). Prebuilt binaries keep evaluator setup off node-gyp. Hashes are stored on `users.password_hash`. Login is not implemented.
+```bash
+pnpm test
+pnpm test:coverage
+pnpm test:e2e
+```
 
 ## Trade-offs
 
-- Database `VARCHAR(280)` is a backstop, not the only validation the app should do.
-- Seed upserts a fixed set of user IDs and recreates their tweets/follows/likes. It does not truncate unrelated rows.
-- `pnpm db:reset` is a local development wipe (`prisma migrate reset --force`). Do not run it against a shared database.
+- Expired session rows can linger until they are seen again.
+- `SameSite=Lax` plus Origin checking is the CSRF baseline; no synchronizer tokens.
+- `pnpm db:reset` is a local wipe. Do not run it against a shared database.

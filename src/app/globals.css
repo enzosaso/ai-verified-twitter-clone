@@ -1,5 +1,49 @@
 @import "tailwindcss";
 
+:root {
+  --paper: #f2f4f3;
+  --ink: #14221f;
+  --muted: #5c6b67;
+  --line: #d5ded9;
+  --card: #fcfdfb;
+  --accent: #0f6a62;
+  --accent-hover: #0c5751;
+  --danger: #9b2c2c;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-card: var(--card);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-figtree);
+  --font-display: var(--font-instrument);
+}
+
+html {
+  background: var(--paper);
+  color: var(--ink);
+}
+
 body {
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  min-height: 100dvh;
+  font-family: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }

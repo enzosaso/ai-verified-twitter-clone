@@ -2,7 +2,7 @@
 
 A Twitter clone built for The Flock AI Verified technical challenge.
 
-The repository currently contains the application scaffold, development tooling, and the relational data model. Product features such as authentication, timelines, and tweet UI have not been implemented yet.
+The repository currently includes the application scaffold, the relational data model, and custom authentication. Tweets, follows, likes, timeline, and search are not implemented yet.
 
 ## Stack
 
@@ -11,8 +11,8 @@ The repository currently contains the application scaffold, development tooling,
 - **PostgreSQL** — relational database for application data
 - **Prisma** — schema, migrations, and typed database access
 - **Tailwind CSS** — utility-first styling
-- **Vitest** and **React Testing Library** — unit and component tests
-- **Playwright** — end-to-end smoke tests
+- **Vitest** — unit and backend integration tests
+- **Playwright** — end-to-end tests, including authentication
 - **ESLint** — linting
 
 This is a pragmatic modular monolith. Next.js and Prisma keep the UI, API, and persistence in one codebase so features can ship without extra services or ceremony.
@@ -43,17 +43,50 @@ pnpm db:seed
 pnpm dev
 ```
 
-The app runs at [http://localhost:3000](http://localhost:3000). The home page is still a scaffold shell; the database is ready for later slices.
+The app runs at [http://localhost:3000](http://localhost:3000).
 
 ### Demo account
-
-Seeded for later authentication work. Login is not implemented yet.
 
 - email: `demo@example.com`
 - username: `demo`
 - password: `Demo1234!`
 
-The password is stored as an Argon2id hash. Other seed users use the same development password so they can be used in later auth tests.
+The password is stored as an Argon2id hash. Other seed users use the same development password.
+
+## Authentication
+
+Custom sessions, not Firebase Auth or Supabase Auth.
+
+- Register: `/register` → `POST /api/auth/register`
+- Login: `/login` → `POST /api/auth/login`
+- Logout: `POST /api/auth/logout`
+- Current user: `GET /api/auth/me`
+- Email and username are trimmed and lowercased. Usernames are `[a-z0-9_]{3,32}`.
+- Passwords are 8–128 characters, hashed with Argon2id.
+- Session token: 32 random bytes, SHA-256 hashed in PostgreSQL, raw value only in the `flock_session` HttpOnly cookie (`SameSite=Lax`, 7 days, `Secure` in production).
+- Server-side protection: `requireAuthenticatedUser()`.
+
+See [docs/architecture.md](docs/architecture.md) for CSRF trade-offs, cookie attributes, and route protection.
+
+## Testing
+
+Unit and PostgreSQL integration tests:
+
+```bash
+pnpm test
+pnpm test:coverage
+```
+
+Integration tests use `TEST_DATABASE_URL` when set, otherwise `DATABASE_URL`. The URL must look local/test (`localhost`, `127.0.0.1`, `twitter_clone`, or `_test`). Tests insert isolated rows and delete them; they do not reset the database.
+
+Playwright, including the authentication flow:
+
+```bash
+pnpm exec playwright install chromium
+pnpm test:e2e
+```
+
+The auth E2E test registers a unique user, confirms the signed-in home page, logs out, logs back in, and checks the session again.
 
 ## Commands
 
@@ -63,10 +96,10 @@ The password is stored as an Argon2id hash. Other seed users use the same develo
 | `pnpm build` | Production build |
 | `pnpm lint` | Lint the project |
 | `pnpm typecheck` | TypeScript check without emitting files |
-| `pnpm test` | Run unit/component tests |
-| `pnpm test:watch` | Unit tests in watch mode |
-| `pnpm test:coverage` | Unit tests with coverage |
-| `pnpm test:e2e` | Playwright smoke tests (`pnpm exec playwright install chromium` on first run) |
+| `pnpm test` | Run unit/integration tests |
+| `pnpm test:watch` | Tests in watch mode |
+| `pnpm test:coverage` | Tests with coverage |
+| `pnpm test:e2e` | Playwright tests (`pnpm exec playwright install chromium` on first run) |
 | `pnpm db:generate` | Generate the Prisma client |
 | `pnpm db:migrate` | Create/apply Prisma migrations in development |
 | `pnpm db:migrate:deploy` | Apply existing migrations |
@@ -75,11 +108,9 @@ The password is stored as an Argon2id hash. Other seed users use the same develo
 
 ## Architecture
 
-The app is a modular monolith. Shared UI lives in `src/components`, infrastructure in `src/lib`, and App Router entry points in `src/app`. Feature modules will be added under `src/modules` as slices land.
+Feature code lives under `src/modules`. Auth is in `src/modules/auth` (domain, application, infrastructure). HTTP route handlers are in `src/app/api/auth`.
 
-The database models `User`, `Session`, `Tweet`, `Follow`, and `Like`. Sessions and password hashes are in place for custom authentication; authentication behavior is not implemented yet. Firebase Auth and Supabase Auth will not be used.
-
-See [docs/architecture.md](docs/architecture.md) for the data model, constraints, indexes, cascades, and seed strategy.
+See [docs/architecture.md](docs/architecture.md) for the data model, session design, and testing notes.
 
 ## AI-assisted development
 
