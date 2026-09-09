@@ -132,6 +132,7 @@ describe.skipIf(!databaseUrl)("tweet HTTP API", () => {
       };
     };
     expect(payload.tweet.content).toBe("hello\nflock");
+    expect(payload.tweet).toMatchObject({ likeCount: 0, likedByViewer: false });
     expect(payload.tweet.author.id).toBe(user.id);
     expect(payload.tweet.author.id).not.toBe(other);
     expect(JSON.stringify(payload)).not.toContain("email");

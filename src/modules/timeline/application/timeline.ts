@@ -5,12 +5,10 @@ import {
 } from "@/modules/timeline/domain/cursor";
 import { parseTimelineLimit } from "@/modules/timeline/domain/page-size";
 import type { TimelinePage } from "@/modules/timeline/domain/types";
-import { toPublicTweet } from "@/modules/tweets/domain/public-tweet";
-import { TWEET_AUTHOR_SELECT } from "@/modules/tweets/domain/types";
-
-const tweetWithAuthor = {
-  author: { select: TWEET_AUTHOR_SELECT },
-} as const;
+import {
+  toPublicTweet,
+  tweetFeedInclude,
+} from "@/modules/tweets/domain/public-tweet";
 
 export async function getHomeTimeline(
   viewerId: string,
@@ -52,7 +50,7 @@ export async function getHomeTimeline(
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: limit + 1,
-    include: tweetWithAuthor,
+    include: tweetFeedInclude(viewerId),
   });
 
   const page = splitTimelinePage(rows, limit);

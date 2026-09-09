@@ -17,6 +17,8 @@ const tweet: PublicTweet = {
     displayName: "Mara Chen",
     avatarUrl: null,
   },
+  likeCount: 2,
+  likedByViewer: false,
 };
 
 describe("TweetCard", () => {
@@ -26,5 +28,12 @@ describe("TweetCard", () => {
 
     rerender(<TweetCard tweet={tweet} canDelete={false} />);
     expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
+  });
+
+  it("shows the like count for guests without a Like control", () => {
+    render(<TweetCard tweet={tweet} />);
+    expect(screen.getByText("2 likes")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Like" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Unlike" })).not.toBeInTheDocument();
   });
 });

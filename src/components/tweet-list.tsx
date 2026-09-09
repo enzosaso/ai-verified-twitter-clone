@@ -21,6 +21,7 @@ export function TweetList({
           key={tweet.id}
           tweet={tweet}
           canDelete={currentUserId === tweet.author.id}
+          canLike={Boolean(currentUserId)}
         />
       ))}
     </div>

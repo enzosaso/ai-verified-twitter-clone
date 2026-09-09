@@ -24,7 +24,7 @@ export default async function UserProfilePage({
   }
 
   const [tweets, graph] = await Promise.all([
-    getTweetsByAuthorId(profile.id),
+    getTweetsByAuthorId(profile.id, { viewerId: currentUser?.id ?? null }),
     getFollowGraph(profile.id, currentUser?.id ?? null),
   ]);
 

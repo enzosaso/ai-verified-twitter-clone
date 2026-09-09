@@ -12,9 +12,10 @@ This project is a pragmatic modular monolith: one Next.js application, one Postg
 - `src/modules/tweets` — tweet create, delete, and profile lists
 - `src/modules/follows` — follow/unfollow, counts, and follower/following lists
 - `src/modules/timeline` — authenticated home feed with cursor pagination
+- `src/modules/likes` — like/unlike tweets and viewer like-state
 - `prisma` — schema, migrations, and development seed
 
-Likes, replies, images, notifications, and realtime updates are not present yet.
+Replies, images, notifications, and realtime updates are not present yet.
 
 ## Principles
 
@@ -24,7 +25,7 @@ Likes, replies, images, notifications, and realtime updates are not present yet.
 
 ## Authentication
 
-Custom cookie sessions are implemented. Likes are not.
+Custom cookie sessions are implemented.
 
 ### HTTP surface
 
@@ -39,6 +40,8 @@ Custom cookie sessions are implemented. Likes are not.
 | `POST` | `/api/users/[username]/follow` | Follow that user as the session user (`204`, idempotent) |
 | `DELETE` | `/api/users/[username]/follow` | Unfollow that user (`204`, idempotent) |
 | `GET` | `/api/timeline` | Authenticated home timeline page (`200`); `cursor` and `limit` query params |
+| `POST` | `/api/tweets/[id]/like` | Like a tweet as the session user (`204`, idempotent) |
+| `DELETE` | `/api/tweets/[id]/like` | Unlike a tweet (`204`, idempotent) |
 
 Pages: `/` (guest landing or signed-in home timeline), `/login`, `/register`, `/search`, `/users/[username]`, `/users/[username]/followers`, `/users/[username]/following`.
 
@@ -99,8 +102,10 @@ Public tweet JSON:
 
 - `id`, `content`, `createdAt` (ISO)
 - `author`: `id`, `username`, `displayName`, `avatarUrl`
+- `likeCount` (public)
+- `likedByViewer` (true only for the current session; always `false` for guests)
 
-No email, password hash, or session fields. Dates on the page use a UTC `YYYY-MM-DD HH:mm UTC` string from the ISO timestamp to avoid hydration mismatches.
+No email, password hash, session fields, or `Like[]` rows. Dates on the page use a UTC `YYYY-MM-DD HH:mm UTC` string from the ISO timestamp to avoid hydration mismatches.
 
 The signed-in home composer posts to the API and refreshes. Home is the social timeline described below.
 
@@ -113,7 +118,7 @@ The feed is the tweets the viewer should see as “home”:
 - authored by the viewer, or
 - authored by a user the viewer follows (`Tweet.author.followers` some `followerId = viewerId`)
 
-Unfollowed and unrelated authors are excluded. Prisma evaluates the follow filter as a relation `some` predicate (an `EXISTS` / semi-join), so the application does not load the follow list into memory and then query tweets per author. Author fields are selected in the same `findMany` (`TWEET_AUTHOR_SELECT`). There is no `COUNT(*)` for pagination.
+Unfollowed and unrelated authors are excluded. Prisma evaluates the follow filter as a relation `some` predicate (an `EXISTS` / semi-join), so the application does not load the follow list into memory and then query tweets per author. Author fields are selected in the same `findMany` (`TWEET_AUTHOR_SELECT`). Like data is selected in that same query (`_count.likes` plus `likes` filtered to the viewer with `take: 1`). There is no `COUNT(*)` for pagination, and likes are not part of the cursor.
 
 ### Ordering
 
@@ -163,7 +168,36 @@ Rules:
 
 Public profile JSON and HTML still omit email, `passwordHash`, and session fields. Social data on a profile is counts plus whether the current viewer follows that profile.
 
-Following someone includes their tweets on the next home load. Unfollowing drops them. There is still no like, reply, image, notification, or realtime surface.
+Following someone includes their tweets on the next home load. Unfollowing drops them. There is still no reply, image, notification, or realtime surface.
+
+## Likes
+
+Authenticated users like with `POST /api/tweets/[id]/like` and unlike with `DELETE /api/tweets/[id]/like`. The liker is always the session user. These routes do not read a JSON body, so a client-supplied `userId` is ignored.
+
+Rules:
+
+- Unauthenticated → `401`
+- Cross-origin mutation → `403`
+- Tweet missing or not a UUID → `404`
+- New like → insert, `204`
+- Like that already exists → `204` (unique constraint treated as success)
+- Unlike when a row exists → delete, `204`
+- Unlike when no row exists → `204` (`deleteMany` of zero rows)
+
+Self-likes are allowed. The product does not treat liking your own post as invalid.
+
+### Query strategy
+
+Timeline and profile tweet lists use one `findMany` per page:
+
+- `_count.likes` for the public count (SQL `COUNT`, not loading `Like` rows)
+- when a viewer is signed in, `likes: { where: { userId: viewerId }, take: 1 }` for `likedByViewer`
+
+That is not N+1: there is no per-tweet follow-up query. Guests omit the viewer `likes` filter; `likedByViewer` is `false`. The `(createdAt, id)` timeline cursor is unchanged by like mutations.
+
+### UI
+
+`TweetCard` shows the count for everyone. Signed-in viewers get Like/Unlike (`aria-pressed`). Guests see the count only. Successful mutations update count/state locally without a full reload.
 
 ### Normalization and validation
 
@@ -213,7 +247,7 @@ API responses use `toSafeUser` / `SAFE_USER_SELECT`: `id`, `email`, `username`, 
 | `sessions` | Opaque hashed session tokens, 7-day expiry, cascade on user delete. |
 | `tweets` | Posts. Create/delete API and profile lists are implemented. |
 | `follows` | Follow graph. Follow/unfollow API, counts, and public lists are implemented. Database CHECK still rejects self-follow as a backstop. |
-| `likes` | Schema only. No like product API yet. |
+| `likes` | Tweet likes. Like/unlike API, public counts, and viewer liked-state are implemented. Composite PK prevents duplicates. |
 
 IDs are UUID v4 stored as PostgreSQL `uuid`.
 
@@ -221,7 +255,7 @@ IDs are UUID v4 stored as PostgreSQL `uuid`.
 
 - Unit tests cover validation, token hashing, cookie options, and safe-user mapping.
 - Integration tests hit the route handlers against PostgreSQL.
-- Playwright covers register → authenticated home → logout → login, plus search, tweets, follow/unfollow, and a home timeline follow flow.
+- Playwright covers register → authenticated home → logout → login, plus search, tweets, follow/unfollow, home timeline, and like/unlike.
 
 Database tests use `TEST_DATABASE_URL` if set, otherwise `DATABASE_URL`. Both must look local/test (`localhost`, `127.0.0.1`, `twitter_clone`, or `_test`). Tests create isolated rows and delete them; they do not run `db:reset`.
 

@@ -2,7 +2,7 @@
 
 A Twitter clone built for The Flock AI Verified technical challenge.
 
-The repository currently includes the application scaffold, the relational data model, custom authentication, public profiles, people search, tweet create/delete, the follow graph, and an authenticated home timeline with cursor pagination. Likes, replies, images, notifications, and realtime updates are not implemented yet.
+The repository currently includes the application scaffold, the relational data model, custom authentication, public profiles, people search, tweet create/delete, the follow graph, an authenticated home timeline with cursor pagination, and tweet likes. Replies, images, notifications, and realtime updates are not implemented yet.
 
 ## Stack
 
@@ -83,6 +83,16 @@ Follower list: `/users/[username]/followers`. Following list: `/users/[username]
 - Content is trimmed, required, max 280 characters. Internal newlines are kept.
 - Public profiles list that user's posts newest first.
 
+## Likes
+
+- Like: `POST /api/tweets/[id]/like` (authenticated). The liker is always the session user.
+- Unlike: `DELETE /api/tweets/[id]/like` (authenticated).
+- Duplicate like and repeated unlike are idempotent (`204`, one row max, no 500).
+- Missing tweets return `404`. Unauthenticated requests return `401`. Cross-origin mutations return `403`.
+- `likeCount` is public on timeline and profile tweet cards. `likedByViewer` is true only for the current session user.
+- Guests see the count and no Like button. Signed-in viewers can like any tweet, including their own.
+- Counts come from PostgreSQL `_count.likes` plus a `take: 1` existence check for the viewer, not by loading the full like list.
+
 ## Home timeline
 
 Signed-in `/` is a social home feed, not “only your posts.”
@@ -123,7 +133,7 @@ pnpm exec playwright install chromium
 pnpm test:e2e
 ```
 
-The auth E2E test registers a unique user, confirms the signed-in home page, logs out, logs back in, and checks the session again. The search E2E test registers a user, finds them by query, opens the public profile, and checks that email is not shown. The tweet E2E test registers, posts a note, sees it on home and profile, then deletes it. The follow E2E test registers two isolated users, follows from a profile, checks counts and the followers list, then unfollows. The timeline E2E test registers two users, follows, and checks that followed and own tweets appear on home in newest-first order.
+The auth E2E test registers a unique user, confirms the signed-in home page, logs out, logs back in, and checks the session again. The search E2E test registers a user, finds them by query, opens the public profile, and checks that email is not shown. The tweet E2E test registers, posts a note, sees it on home and profile, then deletes it. The follow E2E test registers two isolated users, follows from a profile, checks counts and the followers list, then unfollows. The timeline E2E test registers two users, follows, and checks that followed and own tweets appear on home in newest-first order. The likes E2E test follows a user, likes their tweet on home, confirms the same state on the profile, then unlikes.
 
 ## Commands
 
@@ -145,7 +155,7 @@ The auth E2E test registers a unique user, confirms the signed-in home page, log
 
 ## Architecture
 
-Feature code lives under `src/modules`. Auth is in `src/modules/auth`. Public profiles and search are in `src/modules/users`. Tweets are in `src/modules/tweets`. Follows are in `src/modules/follows`. The home timeline is in `src/modules/timeline`. HTTP route handlers are in `src/app/api`.
+Feature code lives under `src/modules`. Auth is in `src/modules/auth`. Public profiles and search are in `src/modules/users`. Tweets are in `src/modules/tweets`. Follows are in `src/modules/follows`. The home timeline is in `src/modules/timeline`. Likes are in `src/modules/likes`. HTTP route handlers are in `src/app/api`.
 
 See [docs/architecture.md](docs/architecture.md) for the data model, session design, and testing notes.
 

@@ -31,6 +31,8 @@ export type PublicTweet = {
   content: string;
   createdAt: string;
   author: PublicTweetAuthor;
+  likeCount: number;
+  likedByViewer: boolean;
 };
 
 export const TWEET_AUTHOR_SELECT = {
@@ -39,5 +41,8 @@ export const TWEET_AUTHOR_SELECT = {
   displayName: true,
   avatarUrl: true,
 } as const;
+
+export const TWEET_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const PROFILE_TWEET_LIMIT = 30;

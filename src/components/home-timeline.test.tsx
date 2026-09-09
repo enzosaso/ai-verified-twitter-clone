@@ -14,6 +14,8 @@ function tweet(id: string, content: string): PublicTweet {
       displayName: "Mara Chen",
       avatarUrl: null,
     },
+    likeCount: 0,
+    likedByViewer: false,
   };
 }
 
